@@ -1,3 +1,8 @@
-%div
-  %h1.text-3xl.font-bold Lieferscheine
-  %p.mt-4.text-gray-600 Prototyp, noch ohne Funktionen.
+-# Startseite: Schriftzug und ein feld als upload-tone. farben und schrift in app/assets/tailwind/application.css.
+.min-h-screen.bg-papier.flex.flex-col.items-center.px-4{class: "pt-[22vh]"}
+  %h1.font-extrabold.tracking-tight.leading-none.text-tinte{class: "text-[clamp(2.75rem,12vw,6rem)]"} Lieferscheine
+  -# dateifeld liegt unsichtbar über dem ganzen feld, drag&drop gehen ohne JS
+  %label.relative.block.w-full.max-w-xl.mt-12.bg-white.border.border-linie.shadow-blatt.px-8.py-14.text-center.cursor-pointer{class: "hover:border-tinte has-focus-visible:ring-2 has-focus-visible:ring-tinte has-focus-visible:ring-offset-2 has-focus-visible:ring-offset-papier"}
+    %input#lieferschein.absolute.inset-0.w-full.h-full.opacity-0.cursor-pointer{type: "file"}
+    %p.text-lg.text-tinte-hell Lieferschein hierher ziehen
+    %span.inline-block.mt-6.rounded-sm.bg-tinte.px-5.py-3.text-white.font-medium Datei auswählen
