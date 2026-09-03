@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+/* Farben und Schrift der App: Formularblau auf Papier. */
+@theme {
+  --color-papier: #eeefea;
+  --color-tinte: #14225a;
+  --color-tinte-hell: #5b6378;
+  --color-linie: #c9cdd9;
+  --font-sans: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --shadow-blatt: 0 1px 2px rgb(20 34 90 / 0.08), 0 14px 32px -14px rgb(20 34 90 / 0.28);
+}
