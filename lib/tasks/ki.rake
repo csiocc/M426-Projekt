@@ -1,7 +1,7 @@
 namespace :ki do
   desc "Testet die Lieferschein-Erkennung mit einer lokalen Datei. " \
        "Aufruf: bin/rails 'ki:extract[pfad/zum/lieferschein.pdf]'"
-  task :extract, [:pfad] => :environment do |_task, args|
+  task :extract, [ :pfad ] => :environment do |_task, args|
     pfad = args[:pfad]
     abort "Pfad angeben: bin/rails 'ki:extract[lieferschein.pdf]'" if pfad.blank?
     abort "Datei nicht gefunden: #{pfad}" unless File.file?(pfad)

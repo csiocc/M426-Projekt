@@ -234,7 +234,7 @@ class LieferscheinExtractor
     parts = Array(data["output"]).flat_map { |item| Array(item["content"]) }
 
     refusal = parts.find { |part| part["type"] == "refusal" }
-    raise ApiError, "Modell hat abgelehnt: #{refusal['refusal']}" if refusal
+    raise ApiError, "Modell hat abgelehnt: #{refusal["refusal"]}" if refusal
 
     text = parts.select { |part| part["type"] == "output_text" }
                 .map { |part| part["text"] }
@@ -242,7 +242,8 @@ class LieferscheinExtractor
 
     if text.strip.empty?
       reason = data.dig("incomplete_details", "reason")
-      raise ApiError, "Leere Antwort von der API#{reason ? " (#{reason})" : ''}"
+      hinweis = reason ? " (#{reason})" : ""
+      raise ApiError, "Leere Antwort von der API#{hinweis}"
     end
 
     JSON.parse(text)
