@@ -36,6 +36,9 @@ gem "image_processing", "~> 2.0"
 # image_processing 2.x bringt das Vips-Backend nicht mehr selbst mit
 gem "ruby-vips", "~> 2.0"
 
+# Validierungen für Active-Storage-Anhänge (Typ, Grösse) [https://github.com/igorkasyanchuk/active_storage_validations]
+gem "active_storage_validations"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
