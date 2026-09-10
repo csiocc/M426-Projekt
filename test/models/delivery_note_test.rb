@@ -11,6 +11,10 @@ class DeliveryNoteTest < ActiveSupport::TestCase
     assert note_with("lieferschein.png", "image/png").valid?
   end
 
+  test "gültig mit JPG" do
+    assert note_with("lieferschein.jpg", "image/jpeg").valid?
+  end
+
   test "gültig mit PDF" do
     assert note_with("lieferschein.pdf", "application/pdf").valid?
   end
