@@ -31,5 +31,30 @@ module Api
       end
       assert_response :unprocessable_content
     end
+
+    test "show liefert id und KI-Resultat" do
+      note = create_note(result: { "lieferant" => "Muster AG" })
+      get api_delivery_note_url(note)
+      assert_response :success
+      assert_equal({ "id" => note.id, "result" => { "lieferant" => "Muster AG" } }, response.parsed_body)
+    end
+
+    test "show liefert null solange kein Resultat da ist" do
+      get api_delivery_note_url(create_note)
+      assert_response :success
+      assert_nil response.parsed_body["result"]
+    end
+
+    test "show mit unbekannter id 404" do
+      get api_delivery_note_url(0)
+      assert_response :not_found
+      assert_equal "Lieferschein nicht gefunden", response.parsed_body["error"]
+    end
+
+    private
+
+    def create_note(result: nil)
+      DeliveryNote.create!(result: result, file: fixture_file_upload("lieferschein.png", "image/png"))
+    end
   end
 end

@@ -2,7 +2,7 @@ Rails.application.routes.draw do
   root "home#index"
 
   namespace :api do
-    resources :delivery_notes, only: :create
+    resources :delivery_notes, only: [ :create, :show ]
   end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
