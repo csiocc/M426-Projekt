@@ -1,0 +1,11 @@
+/* Globale Styles.
+   Die @layer-Zeile muss ganz oben stehen: sie legt die Reihenfolge der CSS-Layer fest.
+   "primeng" liegt nach theme/base, aber vor components/utilities - so koennen
+   Tailwind-Utility-Klassen das PrimeNG-Theme ueberschreiben und nicht umgekehrt. */
+@layer theme, base, primeng, components, utilities;
+
+@import 'tailwindcss';
+@import 'primeicons/primeicons.css';
+
+/* Bringt PrimeNG-Theme-Tokens als Tailwind-Klassen mit (z.B. bg-primary, text-surface-500). */
+@plugin 'tailwindcss-primeui';
