@@ -74,10 +74,6 @@ Für Sprint 1 konzentrieren wir uns auf die wichtigsten MVP-Funktionen: Upload, 
 
 ## 4. Sprint-Dokumentation
 
-## 4. Sprint-Dokumentation
-
-### Sprint 1
-
 ### Sprint 1
 
 | Punkt                               | Inhalt                                                                                                                        |
