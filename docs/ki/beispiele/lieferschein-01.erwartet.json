@@ -1,0 +1,30 @@
+{
+  "kunde": {
+    "name": "Muster AG",
+    "kundennummer": "K-1024",
+    "adresse": {
+      "name": null,
+      "strasse": "Bahnhofstrasse 1",
+      "plz": "8001",
+      "ort": "Zürich",
+      "land": null
+    }
+  },
+  "lieferadresse": {
+    "name": "Muster AG / Baustelle Nord",
+    "strasse": "Industrieweg 5",
+    "plz": "8600",
+    "ort": "Dübendorf",
+    "land": null
+  },
+  "lieferdatum": "2026-09-10",
+  "lieferschein_nummer": "LS-2026-0042",
+  "bestellnummer": "B-9987",
+  "positionen": [
+    { "position": 1, "artikelnummer": "A-100", "bezeichnung": "Schrauben 4x30", "menge": 250, "einheit": "Stk" },
+    { "position": 2, "artikelnummer": "A-205", "bezeichnung": "Dübel S8", "menge": 250, "einheit": "Stk" },
+    { "position": 3, "artikelnummer": "A-330", "bezeichnung": "Baustahlmatte K257", "menge": 12, "einheit": "Stk" },
+    { "position": 4, "artikelnummer": null, "bezeichnung": "Palette (Leergut)", "menge": 1, "einheit": "Palette" }
+  ],
+  "warnungen": []
+}
