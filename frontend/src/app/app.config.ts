@@ -3,11 +3,14 @@ import { provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
+import { DeliveryNoteService, MockDeliveryNoteService } from './services/delivery-note';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    // Platzhalter bis die Rails-API steht - dann hier gegen die HTTP-Variante tauschen.
+    { provide: DeliveryNoteService, useClass: MockDeliveryNoteService },
     providePrimeNG({
       // PrimeNG 22 verlangt einen Lizenzschluessel (Community-Lizenz ist fuer uns
       // gratis: Studenten/Non-Profit). Holen unter https://primeui.dev/licenses/community
