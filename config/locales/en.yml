@@ -28,4 +28,7 @@
 #       enabled: "ON"
 
 en:
-  hello: "Hello world"
+  activerecord:
+    attributes:
+      delivery_note:
+        file: Datei

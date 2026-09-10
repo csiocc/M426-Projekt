@@ -11,12 +11,24 @@ class DeliveryNoteTest < ActiveSupport::TestCase
     assert note_with("lieferschein.png", "image/png").valid?
   end
 
+  test "gültig mit JPG" do
+    assert note_with("lieferschein.jpg", "image/jpeg").valid?
+  end
+
+  test "gültig mit WebP" do
+    assert note_with("lieferschein.webp", "image/webp").valid?
+  end
+
   test "gültig mit PDF" do
     assert note_with("lieferschein.pdf", "application/pdf").valid?
   end
 
   test "ungültig ohne Datei" do
     assert_not DeliveryNote.new.valid?
+  end
+
+  test "ungültig mit HEIC" do
+    assert_not note_with("lieferschein.heic", "image/heic").valid?
   end
 
   test "ungültig mit Textdatei" do
