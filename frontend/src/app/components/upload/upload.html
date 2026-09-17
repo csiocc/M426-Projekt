@@ -1,0 +1,108 @@
+<section class="mx-auto flex min-h-screen w-full max-w-4xl flex-col justify-center px-6 py-12">
+  <header class="mb-10">
+    <h1
+      class="mb-3 text-5xl font-extrabold tracking-tight text-surface-900 sm:text-6xl dark:text-surface-0"
+    >
+      Lieferscheine
+    </h1>
+    <p class="text-lg text-surface-600 dark:text-surface-400">
+      Lade einen Lieferschein als Bild oder PDF hoch, maximal {{ formatBytes(maxFileSize) }}.
+    </p>
+  </header>
+
+  <p-fileupload
+    #uploader
+    mode="advanced"
+    styleClass="w-full"
+    [customUpload]="true"
+    [accept]="acceptedTypes"
+    [maxFileSize]="maxFileSize"
+    [multiple]="false"
+    [fileLimit]="1"
+    [disabled]="laeuft()"
+    chooseLabel="Datei auswählen"
+    uploadLabel="Hochladen"
+    cancelLabel="Entfernen"
+    invalidFileTypeMessageSummary="{0}: falscher Dateityp"
+    invalidFileTypeMessageDetail="Erlaubt sind PNG, JPG, WebP, GIF oder PDF."
+    invalidFileSizeMessageSummary="{0}: Datei zu gross"
+    invalidFileSizeMessageDetail="Erlaubt sind höchstens {0}."
+    (uploadHandler)="onUpload($event)"
+    (onClear)="zuruecksetzen(uploader)"
+    (onRemove)="zuruecksetzen(uploader)"
+  >
+    <!--
+      Eigene Zeile pro Datei. PrimeNG rendert sonst immer ein <img> auf
+      file.objectURL - die setzt es aber nur bei Bildern, womit ein PDF als
+      kaputtes Bild erscheint.
+    -->
+    <ng-template #file let-datei>
+      <div
+        class="flex items-center gap-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+      >
+        @if (vorschau(datei); as bild) {
+          <img [src]="bild" [alt]="datei.name" width="50" class="rounded" />
+        } @else {
+          <!-- accept laesst nur Bilder und PDF zu - was kein Bild ist, ist ein PDF. -->
+          <i class="pi pi-file-pdf text-4xl text-red-500" aria-hidden="true"></i>
+        }
+
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium text-surface-900 dark:text-surface-0">{{ datei.name }}</p>
+          <p class="text-sm text-surface-500">{{ formatBytes(datei.size) }}</p>
+        </div>
+
+        <button
+          type="button"
+          pButton
+          text
+          rounded
+          severity="danger"
+          icon="pi pi-times"
+          aria-label="Datei entfernen"
+          (click)="uploader.remove($event, uploader.files.indexOf(datei))"
+        ></button>
+      </div>
+    </ng-template>
+
+    <!-- Leerzustand: bestimmt die Hoehe der Ablageflaeche, darum bewusst gross. -->
+    <ng-template #empty>
+      <div class="flex min-h-[22rem] flex-col items-center justify-center gap-5 py-12 text-center">
+        <i class="pi pi-cloud-upload text-7xl text-surface-400"></i>
+        <p class="text-2xl font-medium text-surface-700 dark:text-surface-300">
+          Lieferschein hierher ziehen
+        </p>
+        <p class="text-base text-surface-500">oder oben „Datei auswählen“ klicken</p>
+      </div>
+    </ng-template>
+  </p-fileupload>
+
+  @if (status() === 'laedt') {
+    <p-message severity="info" styleClass="mt-8 w-full">Lieferschein wird hochgeladen …</p-message>
+  }
+
+  @if (status() === 'analysiert') {
+    <p-message severity="info" styleClass="mt-8 w-full">
+      <span
+        ><strong>{{ dateiname() }}</strong> wird analysiert …</span
+      >
+    </p-message>
+  }
+
+  @if (status() === 'fehler') {
+    <p-message severity="error" styleClass="mt-8 w-full">{{ fehler() }}</p-message>
+  }
+
+  @if (status() === 'fertig') {
+    <section class="mt-8">
+      <h2 class="mb-3 text-xl font-semibold text-surface-900 dark:text-surface-0">
+        Erkannte Daten aus {{ dateiname() }}
+      </h2>
+      <!-- Das rohe JSON der API. overflow-x-auto, damit lange Zeilen die Seite
+           nicht breiter machen, als der Bildschirm ist. -->
+      <pre
+        class="overflow-x-auto rounded-lg border border-surface-200 bg-surface-0 p-4 text-sm text-surface-800 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-200"
+        >{{ ergebnis() | json }}</pre>
+    </section>
+  }
+</section>
