@@ -158,12 +158,20 @@ class LieferscheinExtractor
     request["Content-Type"] = "application/json"
     request.body = JSON.generate(payload)
 
-    response = http.request(request)
+    response = execute_http_request(http, request)
     return response.body if response.is_a?(Net::HTTPSuccess)
 
     raise ApiError, "OpenAI-API HTTP #{response.code}: #{response.body}"
   rescue *NETWORK_ERRORS => e
     raise ApiError, "Netzwerkfehler beim Aufruf der OpenAI-API (#{e.class}): #{e.message}"
+  end
+
+  # Eigene Methode nur fuer den eigentlichen Netzwerk-Request, damit Tests
+  # gezielt einen Netzwerkfehler simulieren koennen (z. B. per
+  # define_singleton_method auf einer einzelnen Instanz), ohne Net::HTTP
+  # global zu stubben oder eine Mocking-Bibliothek zu brauchen.
+  def execute_http_request(http, request)
+    http.request(request)
   end
 
   def parse_response(body)

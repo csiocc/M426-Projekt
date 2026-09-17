@@ -1,5 +1,4 @@
 require "test_helper"
-require "minitest/mock"
 
 class LieferscheinExtractorTest < ActiveSupport::TestCase
   # Minimaler, gueltiger Response-Body der OpenAI Responses-API.
@@ -176,18 +175,14 @@ class LieferscheinExtractorTest < ActiveSupport::TestCase
     extractor = LieferscheinExtractor.new(
       io: StringIO.new("bild"), content_type: "image/png", api_key: "test"
     )
-
-    fake_http = Class.new do
-      def use_ssl=(_wert); end
-      def open_timeout=(_wert); end
-      def read_timeout=(_wert); end
-      def request(_request) = raise(Net::OpenTimeout, "timeout")
-    end.new
-
-    Net::HTTP.stub :new, fake_http do
-      error = assert_raises(LieferscheinExtractor::ApiError) { extractor.call }
-      assert_match(/Netzwerkfehler/, error.message)
+    # Nur die eine Instanz ueberschreiben (kein globales Stubbing noetig) -
+    # simuliert einen Netzwerkfehler beim eigentlichen Request.
+    extractor.define_singleton_method(:execute_http_request) do |*_args|
+      raise Net::OpenTimeout, "timeout"
     end
+
+    error = assert_raises(LieferscheinExtractor::ApiError) { extractor.call }
+    assert_match(/Netzwerkfehler/, error.message)
   end
 
   test "from_attachment meldet AttachmentError ohne Anhang" do
