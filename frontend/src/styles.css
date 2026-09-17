@@ -10,8 +10,6 @@
 /* Bringt PrimeNG-Theme-Tokens als Tailwind-Klassen mit (z.B. bg-primary, text-surface-500). */
 @plugin 'tailwindcss-primeui';
 
-/* Tailwind schaltet dark: standardmaessig ueber die OS-Einstellung, PrimeNG ueber
-   den .app-dark-Selektor aus app.config.ts. Ohne diese Zeile laufen die zwei
-   auseinander: dunkler Seitenhintergrund, aber helle PrimeNG-Komponenten.
-   Jetzt haengen beide am selben Schalter - .app-dark am <html>-Element. */
-@custom-variant dark (&:where(.app-dark, .app-dark *));
+/* Kein @custom-variant fuer dark: noetig - Tailwind schaltet dark: von Haus aus
+   ueber prefers-color-scheme, und PrimeNG steht in app.config.ts auf
+   darkModeSelector: 'system'. Beide haengen damit am selben Schalter. */

@@ -1,11 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, Subject, of, throwError } from 'rxjs';
 import { JsonValue } from '../../models/delivery-note';
 import { DeliveryNoteService } from '../../services/delivery-note';
 import { Upload } from './upload';
 
 /** Attrappe, damit die Komponente ohne HTTP getestet werden kann. */
 class StubService extends DeliveryNoteService {
+  /** Zaehlt mit, wie oft die Komponente den Upload tatsaechlich ausloest. */
+  uploads = 0;
+
   constructor(
     private readonly hochgeladen: Observable<number>,
     private readonly analysiert: Observable<JsonValue> = of({ lieferant: 'Muster AG' }),
@@ -13,6 +16,7 @@ class StubService extends DeliveryNoteService {
     super();
   }
   upload(): Observable<number> {
+    this.uploads++;
     return this.hochgeladen;
   }
   ergebnis(): Observable<JsonValue> {
@@ -87,15 +91,63 @@ describe('Upload', () => {
   it('gibt nach dem Entfernen wieder einen Upload frei', async () => {
     const fixture = await setup(new StubService(of(1)));
     const komponente = fixture.componentInstance as unknown as {
-      zuruecksetzen: (u: { uploadedFileCount: number }) => void;
+      zuruecksetzen: (u: { uploadedFileCount: number; files: File[] }) => void;
     };
 
     // PrimeNG zaehlt beim Hochladen hoch und setzt selbst nie zurueck -
     // bliebe der Zaehler stehen, waere "Datei auswählen" dauerhaft gesperrt.
-    const uploader = { uploadedFileCount: 1 };
+    // Der Zaehler allein reicht aber nicht: das computed hinter dem Knopf
+    // haengt am Signal hinter files und rechnet nur dann neu.
+    const uploader = { uploadedFileCount: 1, files: [pngDatei()] };
     komponente.zuruecksetzen(uploader);
 
     expect(uploader.uploadedFileCount).toBe(0);
+    expect(uploader.files).toEqual([]);
+  });
+
+  it('nimmt waehrend eines laufenden Uploads keinen zweiten an', async () => {
+    // NEVER: der Upload bleibt haengen, die Komponente steht also auf 'laedt'.
+    const service = new StubService(NEVER);
+    const fixture = await setup(service);
+
+    ausloesen(fixture, pngDatei());
+    ausloesen(fixture, pngDatei());
+    await fixture.whenStable();
+
+    expect(service.uploads).toBe(1);
+  });
+
+  it('gibt nach dem Entfernen wieder einen Upload an den Service durch', async () => {
+    const service = new StubService(NEVER);
+    const fixture = await setup(service);
+    const komponente = fixture.componentInstance as unknown as {
+      zuruecksetzen: (u: { uploadedFileCount: number; files: File[] }) => void;
+    };
+
+    ausloesen(fixture, pngDatei());
+    komponente.zuruecksetzen({ uploadedFileCount: 1, files: [] });
+    ausloesen(fixture, pngDatei());
+    await fixture.whenStable();
+
+    expect(service.uploads).toBe(2);
+  });
+
+  it('verwirft das Ergebnis eines abgebrochenen Uploads', async () => {
+    const antwort = new Subject<number>();
+    const fixture = await setup(new StubService(antwort));
+    const komponente = fixture.componentInstance as unknown as {
+      zuruecksetzen: (u: { uploadedFileCount: number; files: File[] }) => void;
+    };
+
+    ausloesen(fixture, pngDatei());
+    komponente.zuruecksetzen({ uploadedFileCount: 1, files: [] });
+
+    // Antwort des Servers zur entfernten Datei - sie darf nichts mehr anzeigen.
+    antwort.next(1);
+    antwort.complete();
+    await fixture.whenStable();
+
+    expect(textVon(fixture)).not.toContain('Erkannte Daten');
   });
 
   it('zeigt die Fehlermeldung aus dem Upload an', async () => {
