@@ -2,6 +2,8 @@ require "test_helper"
 
 module Api
   class DeliveryNotesControllerTest < ActionDispatch::IntegrationTest
+    include ActiveJob::TestHelper
+
     test "legt Lieferschein aus Bild an und liefert die id" do
       assert_difference("DeliveryNote.count", 1) do
         post api_delivery_notes_url, params: { file: fixture_file_upload("lieferschein.png", "image/png") }
@@ -10,12 +12,23 @@ module Api
       assert_equal DeliveryNote.last.id, response.parsed_body["id"]
     end
 
+    test "stellt nach dem Upload den KI-Job in die Warteschlange" do
+      post api_delivery_notes_url, params: { file: fixture_file_upload("lieferschein.png", "image/png") }
+      assert_enqueued_with(job: ExtractDeliveryNoteJob, args: [ DeliveryNote.last.id ])
+    end
+
     test "ohne Datei 422 mit Fehlermeldung" do
       assert_no_difference("DeliveryNote.count") do
         post api_delivery_notes_url
       end
       assert_response :unprocessable_content
       assert_includes response.parsed_body["errors"], "Datei fehlt"
+    end
+
+    test "ohne gültige Datei läuft kein KI-Job" do
+      assert_no_enqueued_jobs do
+        post api_delivery_notes_url
+      end
     end
 
     test "mit String statt Datei 422" do

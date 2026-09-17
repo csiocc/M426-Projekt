@@ -13,6 +13,22 @@ strukturiertes JSON.
 | [`../../app/services/lieferschein_extractor.rb`](../../app/services/lieferschein_extractor.rb) | Service: API-Aufruf + JSON Schema (Structured Outputs) |
 | [`../../lib/tasks/ki.rake`](../../lib/tasks/ki.rake) | CLI-Task zum Testen mit einer echten Datei |
 | [`../../test/services/lieferschein_extractor_test.rb`](../../test/services/lieferschein_extractor_test.rb) | Unit-Tests (ohne echten API-Aufruf) |
+| [`../../app/jobs/extract_delivery_note_job.rb`](../../app/jobs/extract_delivery_note_job.rb) | Verbindet Upload und Service, schreibt das Ergebnis in die DB |
+
+## Ablauf Upload -> KI -> Frontend
+
+1. `POST /api/delivery_notes` speichert die Datei und antwortet sofort mit
+   `{"id": 7}` (201). Der API-Aufruf dauert mehrere Sekunden, darum läuft er
+   nicht im Request.
+2. `ExtractDeliveryNoteJob` ruft `LieferscheinExtractor.from_attachment` auf
+   und schreibt das Resultat nach `delivery_notes.result`.
+3. Das Frontend pollt `GET /api/delivery_notes/7`:
+   - `{"id": 7, "result": null}` -> noch am Arbeiten, weiter pollen
+   - `{"id": 7, "result": {"kunde": ...}}` -> fertig, siehe [`json-format.md`](json-format.md)
+   - `{"id": 7, "result": {"fehler": "OpenAI-API HTTP 401"}}` -> fehlgeschlagen,
+     Meldung anzeigen und aufhören zu pollen
+
+Ohne `OPENAI_API_KEY` landet entsprechend eine `fehler`-Meldung im Resultat.
 
 ## API-Key einrichten
 
