@@ -2,10 +2,10 @@
 
 Dieses Dokument legt fest, wie die von der KI ausgelesenen Daten aufgebaut sind.
 Die maschinenlesbare Fassung (JSON Schema) steht in
-[`app/services/lieferschein_extractor.rb`](../../app/services/lieferschein_extractor.rb)
-in der Konstante `SCHEMA` und wird als *Structured Output* direkt an die
-OpenAI-API übergeben – das Modell **kann** also gar kein anderes Format
-zurückgeben.
+[`app/services/lieferschein_extractor/schema.rb`](../../app/services/lieferschein_extractor/schema.rb)
+in der Konstante `LieferscheinExtractor::Schema::ROOT` und wird als *Structured
+Output* direkt an die OpenAI-API übergeben – das Modell **kann** also gar kein
+anderes Format zurückgeben.
 
 Das Ergebnis wird 1:1 in der Spalte `delivery_notes.result` (JSON) gespeichert.
 
