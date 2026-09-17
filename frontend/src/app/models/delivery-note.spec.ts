@@ -17,7 +17,11 @@ describe('validateFile', () => {
   });
 
   it('lehnt eine Textdatei ab', () => {
-    expect(validateFile(fileOf('ls.txt', 'text/plain', 1024))).toContain('Bilder oder PDF');
+    expect(validateFile(fileOf('ls.txt', 'text/plain', 1024))).toContain('PNG, JPG');
+  });
+
+  it('lehnt HEIC ab, weil das Backend es nicht annimmt', () => {
+    expect(validateFile(fileOf('ls.heic', 'image/heic', 1024))).toContain('PNG, JPG');
   });
 
   it('lehnt Dateien ueber 20 MB ab', () => {

@@ -1,30 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Observable, of, throwError } from 'rxjs';
-import { DeliveryNote } from '../../models/delivery-note';
+import { JsonValue } from '../../models/delivery-note';
 import { DeliveryNoteService } from '../../services/delivery-note';
 import { Upload } from './upload';
 
+/** Attrappe, damit die Komponente ohne HTTP getestet werden kann. */
 class StubService extends DeliveryNoteService {
-  constructor(private readonly antwort: Observable<DeliveryNote>) {
+  constructor(
+    private readonly hochgeladen: Observable<number>,
+    private readonly analysiert: Observable<JsonValue> = of({ lieferant: 'Muster AG' }),
+  ) {
     super();
   }
-  upload(): Observable<DeliveryNote> {
-    return this.antwort;
+  upload(): Observable<number> {
+    return this.hochgeladen;
+  }
+  ergebnis(): Observable<JsonValue> {
+    return this.analysiert;
   }
 }
 
-const beispielNote: DeliveryNote = {
-  id: 'abc',
-  filename: 'lieferschein.png',
-  size: 1536,
-  contentType: 'image/png',
-  uploadedAt: new Date(),
-};
-
-async function setup(antwort: Observable<DeliveryNote>): Promise<ComponentFixture<Upload>> {
+async function setup(service: StubService): Promise<ComponentFixture<Upload>> {
   await TestBed.configureTestingModule({
     imports: [Upload],
-    providers: [{ provide: DeliveryNoteService, useValue: new StubService(antwort) }],
+    providers: [{ provide: DeliveryNoteService, useValue: service }],
   }).compileComponents();
 
   const fixture = TestBed.createComponent(Upload);
@@ -41,36 +40,82 @@ function ausloesen(fixture: ComponentFixture<Upload>, file: File): void {
 }
 
 const pngDatei = () => new File(['x'], 'lieferschein.png', { type: 'image/png' });
+const textVon = (fixture: ComponentFixture<Upload>) =>
+  (fixture.nativeElement as HTMLElement).textContent ?? '';
 
 describe('Upload', () => {
   it('should create', async () => {
-    const fixture = await setup(of(beispielNote));
+    const fixture = await setup(new StubService(of(1)));
     expect(fixture.componentInstance).toBeTruthy();
   });
 
   it('zeigt Titel und Hinweistext', async () => {
-    const fixture = await setup(of(beispielNote));
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    const fixture = await setup(new StubService(of(1)));
+    const text = textVon(fixture);
     expect(text).toContain('Lieferscheine');
     expect(text).toContain('20.0 MB');
   });
 
-  it('meldet Erfolg samt Dateiname und Groesse', async () => {
-    const fixture = await setup(of(beispielNote));
+  it('zeigt das JSON-Ergebnis samt Dateiname an', async () => {
+    const fixture = await setup(
+      new StubService(of(1), of({ lieferschein_nummer: 'LS-2026-0042', positionen: [] })),
+    );
     ausloesen(fixture, pngDatei());
     await fixture.whenStable();
 
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    const text = textVon(fixture);
     expect(text).toContain('lieferschein.png');
-    expect(text).toContain('1.5 KB');
+    expect(text).toContain('lieferschein_nummer');
+    expect(text).toContain('LS-2026-0042');
   });
 
-  it('zeigt die Fehlermeldung des Services an', async () => {
-    const fixture = await setup(throwError(() => new Error('Serverfehler beim Upload.')));
+  it('liefert nur fuer Bilder eine Vorschau, nicht fuer PDF', async () => {
+    const fixture = await setup(new StubService(of(1)));
+    const komponente = fixture.componentInstance as unknown as {
+      vorschau: (d: File) => unknown;
+    };
+
+    // PrimeNG haengt die objectURL nur an Bilder an.
+    const bild = pngDatei() as File & { objectURL?: string };
+    bild.objectURL = 'blob:http://localhost/abc';
+    expect(komponente.vorschau(bild)).toBe('blob:http://localhost/abc');
+
+    const pdf = new File(['x'], 'lieferschein.pdf', { type: 'application/pdf' });
+    expect(komponente.vorschau(pdf)).toBeNull();
+  });
+
+  it('gibt nach dem Entfernen wieder einen Upload frei', async () => {
+    const fixture = await setup(new StubService(of(1)));
+    const komponente = fixture.componentInstance as unknown as {
+      zuruecksetzen: (u: { uploadedFileCount: number }) => void;
+    };
+
+    // PrimeNG zaehlt beim Hochladen hoch und setzt selbst nie zurueck -
+    // bliebe der Zaehler stehen, waere "Datei auswählen" dauerhaft gesperrt.
+    const uploader = { uploadedFileCount: 1 };
+    komponente.zuruecksetzen(uploader);
+
+    expect(uploader.uploadedFileCount).toBe(0);
+  });
+
+  it('zeigt die Fehlermeldung aus dem Upload an', async () => {
+    const fixture = await setup(new StubService(throwError(() => new Error('Datei fehlt'))));
     ausloesen(fixture, pngDatei());
     await fixture.whenStable();
 
-    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(text).toContain('Serverfehler beim Upload.');
+    expect(textVon(fixture)).toContain('Datei fehlt');
+  });
+
+  it('zeigt die Fehlermeldung aus der Analyse an', async () => {
+    const fixture = await setup(
+      new StubService(
+        of(1),
+        throwError(() => new Error('Lieferschein nicht gefunden')),
+      ),
+    );
+    ausloesen(fixture, pngDatei());
+    await fixture.whenStable();
+
+    expect(textVon(fixture)).toContain('Lieferschein nicht gefunden');
   });
 });

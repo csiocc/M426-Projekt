@@ -1,15 +1,31 @@
-/** Ein hochgeladener Lieferschein, wie ihn das Backend spaeter zurueckgibt. */
+/** Beliebiger JSON-Wert - das KI-Resultat kommt als freies JSON aus dem Backend. */
+export type JsonValue =
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+/**
+ * Ein Lieferschein, wie ihn `GET /api/delivery_notes/:id` zurueckgibt.
+ * Mehr Felder liefert die API nicht - Dateiname und Groesse kennen wir nur lokal.
+ */
 export interface DeliveryNote {
-  id: string;
-  filename: string;
-  size: number;
-  contentType: string;
-  uploadedAt: Date;
+  id: number;
+  /** Das Analyse-Ergebnis. Bleibt null, solange die KI noch rechnet. */
+  result: JsonValue | null;
 }
 
-/** Grenzen absichtlich identisch zum Backend-Modell (DeliveryNote-Validierungen). */
+/** Genau die Typen, die das Backend-Modell DeliveryNote akzeptiert. */
+const ACCEPTED_TYPE_LIST = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+];
+
+/** Fuer das accept-Attribut des Datei-Dialogs. */
+export const ACCEPTED_TYPES = ACCEPTED_TYPE_LIST.join(',');
+
+/** Grenze absichtlich identisch zum Backend-Modell. */
 export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-export const ACCEPTED_TYPES = 'image/*,application/pdf';
 
 /**
  * Prueft eine Datei gegen dieselben Regeln wie das Backend.
@@ -19,11 +35,8 @@ export const ACCEPTED_TYPES = 'image/*,application/pdf';
  * passiert im Backend, weil Client-Validierung umgehbar ist.
  */
 export function validateFile(file: File): string | null {
-  const isImage = file.type.startsWith('image/');
-  const isPdf = file.type === 'application/pdf';
-
-  if (!isImage && !isPdf) {
-    return 'Nur Bilder oder PDF-Dateien sind erlaubt.';
+  if (!ACCEPTED_TYPE_LIST.includes(file.type)) {
+    return 'Erlaubt sind nur PNG, JPG, WebP, GIF oder PDF.';
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return 'Die Datei darf hoechstens 20 MB gross sein.';
