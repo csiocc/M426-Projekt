@@ -78,6 +78,27 @@ describe('HttpDeliveryNoteService', () => {
       }
     });
 
+    it('bricht eine langsame Antwort nicht ab und fragt solange nicht nach', async () => {
+      vi.useFakeTimers();
+      try {
+        const versprechen = firstValueFrom(service.ergebnis(7));
+
+        await vi.advanceTimersByTimeAsync(0);
+        const langsam = http.expectOne('/api/delivery_notes/7');
+
+        // Der Server laesst sich mehr Zeit als ein Poll-Intervall. exhaustMap
+        // ueberspringt den Takt, statt die laufende Anfrage abzubrechen.
+        await vi.advanceTimersByTimeAsync(1500 * 3);
+        http.expectNone('/api/delivery_notes/7');
+        expect(langsam.cancelled).toBe(false);
+
+        langsam.flush({ id: 7, result: { lieferant: 'Muster AG' } });
+        expect(await versprechen).toEqual({ lieferant: 'Muster AG' });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('meldet die Fehlermeldung einer 404-Antwort', async () => {
       vi.useFakeTimers();
       try {

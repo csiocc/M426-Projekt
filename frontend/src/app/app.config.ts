@@ -21,8 +21,11 @@ export const appConfig: ApplicationConfig = {
       theme: {
         preset: Aura,
         options: {
-          // Dark Mode nur wenn .app-dark am <html> haengt, statt automatisch per OS-Einstellung.
-          darkModeSelector: '.app-dark',
+          // Dark Mode folgt der OS-Einstellung (prefers-color-scheme). Vorher stand
+          // hier '.app-dark' - die Klasse hat aber nie jemand gesetzt, damit war der
+          // Dark Mode tot. Ohne Umschalter in der Oberflaeche ist 'system' das
+          // Richtige, und Tailwinds dark: haengt am selben Schalter.
+          darkModeSelector: 'system',
           cssLayer: { name: 'primeng', order: 'theme, base, primeng, components, utilities' },
         },
       },

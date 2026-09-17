@@ -3,10 +3,12 @@
 require "net/http"
 require "json"
 require "base64"
+require "openssl"
 
 # Liest einen Lieferschein (Bild oder PDF) mit Hilfe der OpenAI-API aus und
-# gibt die erkannten Daten als strukturierten Hash zurück (siehe
-# docs/ki/json-format.md).
+# gibt die erkannten Daten als strukturierten Hash zurueck (siehe
+# docs/ki/json-format.md). Prompt und JSON-Schema liegen in
+# LieferscheinExtractor::Prompt und LieferscheinExtractor::Schema.
 #
 # Beispiel:
 #   result = LieferscheinExtractor.call(
@@ -23,105 +25,26 @@ class LieferscheinExtractor
   class ConfigurationError < Error; end
   class ApiError < Error; end
   class UnsupportedTypeError < Error; end
+  class AttachmentError < Error; end
 
-  # Vision-fähiges Modell mit Unterstützung für Structured Outputs.
-  # Per ENV übersteuerbar (z. B. "gpt-4o-mini" für günstigere Tests).
+  # Vision-faehiges Modell mit Unterstuetzung fuer Structured Outputs.
+  # Per ENV uebersteuerbar (z. B. "gpt-4o-mini" fuer guenstigere Tests).
   MODEL = ENV.fetch("OPENAI_MODEL", "gpt-4o-2024-08-06")
   ENDPOINT = URI("https://api.openai.com/v1/responses")
 
-  # Sicherheitsnetz gegen zu grosse / teure Antworten.
-  MAX_OUTPUT_TOKENS = 4_000
-  OPEN_TIMEOUT = 10
-  READ_TIMEOUT = 120
+  # Sicherheitsnetz gegen zu grosse / teure Antworten. Alle per ENV
+  # uebersteuerbar, da die passenden Werte vom Dokumentumfang abhaengen
+  # (siehe Review: "token limit / timeouts evtl. zu knapp, muessen wir testen").
+  MAX_OUTPUT_TOKENS = ENV.fetch("OPENAI_MAX_OUTPUT_TOKENS", "8000").to_i
+  OPEN_TIMEOUT = ENV.fetch("OPENAI_OPEN_TIMEOUT", "15").to_i
+  READ_TIMEOUT = ENV.fetch("OPENAI_READ_TIMEOUT", "180").to_i
 
-  SYSTEM_PROMPT = <<~PROMPT.freeze
-    Du bist ein Assistent, der Lieferscheine (Bilder oder PDF) ausliest und die
-    enthaltenen Daten strukturiert zurueckgibt.
-
-    Aufgabe:
-    - Lies den Lieferschein sorgfaeltig und extrahiere ausschliesslich
-      Informationen, die tatsaechlich im Dokument sichtbar sind.
-    - Gib das Ergebnis exakt im vorgegebenen JSON-Schema zurueck.
-
-    Regeln:
-    1. Erfinde nichts. Fehlt eine Angabe oder ist sie unleserlich, setze den
-       Wert auf null (bzw. eine leere Liste bei "positionen").
-    2. Lieferdatum: Wandle jedes Datum in das Format YYYY-MM-DD um. Erkenne
-       schweizerische/deutsche Schreibweisen (z. B. 03.09.2026, 3. Sept. 2026).
-       Ein reines Bestell-, Druck- oder Rechnungsdatum ist KEIN Lieferdatum
-       -> dann lieferdatum = null.
-    3. Kunde = Empfaenger der Ware, nicht der Lieferant/Absender.
-    4. Weichen Rechnungs- und Lieferadresse ab, gehoert die Warenempfaenger-
-       Adresse in "lieferadresse" und die Kundenadresse in "kunde.adresse".
-       Gibt es nur eine Adresse, verwende sie fuer beide Felder.
-    5. Mengen: nur die Zahl (Punkt als Dezimaltrennzeichen). Die Einheit
-       (z. B. "Stk", "kg", "m", "Palette") gehoert separat in "einheit".
-    6. "bezeichnung" ist die Artikelbezeichnung so, wie sie auf dem Lieferschein
-       steht, ohne die Artikelnummer.
-    7. Werte unveraendert in der Sprache des Dokuments uebernehmen.
-    8. Trage in "warnungen" kurze Hinweise ein, wenn etwas unsicher/unleserlich
-       war oder das Dokument offensichtlich kein Lieferschein ist.
-  PROMPT
-
-  USER_INSTRUCTION = "Hier ist der Lieferschein. Extrahiere die Daten gemaess Schema."
-
-  # Wiederverwendbares Adress-Objekt. `strict: true` verlangt, dass alle
-  # Felder in `required` stehen und `additionalProperties: false` gesetzt ist.
-  ADRESSE_SCHEMA = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      name:    { type: %w[string null], description: "Firma/Person an dieser Adresse, falls abweichend" },
-      strasse: { type: %w[string null], description: "Strasse und Hausnummer" },
-      plz:     { type: %w[string null] },
-      ort:     { type: %w[string null] },
-      land:    { type: %w[string null], description: "Land, falls angegeben (z. B. CH, Schweiz)" }
-    },
-    required: %w[name strasse plz ort land]
-  }.freeze
-
-  SCHEMA = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      kunde: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          name:         { type: %w[string null], description: "Name/Firma des Warenempfaengers" },
-          kundennummer: { type: %w[string null] },
-          adresse:      ADRESSE_SCHEMA
-        },
-        required: %w[name kundennummer adresse]
-      },
-      lieferadresse:       ADRESSE_SCHEMA,
-      lieferdatum:         { type: %w[string null], description: "Lieferdatum als YYYY-MM-DD" },
-      lieferschein_nummer: { type: %w[string null] },
-      bestellnummer:       { type: %w[string null], description: "Referenz auf Bestellung/Auftrag des Kunden" },
-      positionen: {
-        type: "array",
-        description: "Artikelpositionen in der Reihenfolge des Lieferscheins",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            position:      { type: %w[integer null], description: "Positionsnummer laut Lieferschein" },
-            artikelnummer: { type: %w[string null] },
-            bezeichnung:   { type: "string" },
-            menge:         { type: %w[number null] },
-            einheit:       { type: %w[string null] }
-          },
-          required: %w[position artikelnummer bezeichnung menge einheit]
-        }
-      },
-      warnungen: {
-        type: "array",
-        description: "Kurze Hinweise auf unsichere/unleserliche Stellen",
-        items: { type: "string" }
-      }
-    },
-    required: %w[kunde lieferadresse lieferdatum lieferschein_nummer bestellnummer positionen warnungen]
-  }.freeze
+  # Netzwerkfehler, die beim API-Aufruf auftreten koennen (Timeout, DNS, TLS,
+  # abgebrochene Verbindung) und als ApiError statt als roher Stacktrace beim
+  # Aufrufer ankommen sollen.
+  NETWORK_ERRORS = [
+    Timeout::Error, SocketError, OpenSSL::SSL::SSLError, SystemCallError, EOFError, IOError
+  ].freeze
 
   # @param io [IO] geoeffnete Datei (binaer)
   # @param content_type [String] z. B. "image/png", "application/pdf"
@@ -142,7 +65,12 @@ class LieferscheinExtractor
   end
 
   # Bequemer Aufruf mit einem ActiveStorage-Anhang (z. B. DeliveryNote#file).
+  # Deckt die beiden Faelle ab, die beim direkten `attachment.blob.open` roh
+  # durchgeschlagen sind: kein Anhang vorhanden, oder die Datei fehlt im
+  # Storage.
   def self.from_attachment(attachment, **kwargs)
+    raise AttachmentError, "Kein Anhang vorhanden" if attachment.nil? || !attachment.attached?
+
     attachment.blob.open do |file|
       call(
         io:           file,
@@ -151,12 +79,21 @@ class LieferscheinExtractor
         **kwargs
       )
     end
+  rescue ActiveStorage::FileNotFoundError => e
+    raise AttachmentError, "Datei im Storage nicht gefunden: #{e.message}"
   end
 
+  # Nur das gezielte Fehlerbild "keine/kaputte master.key" wird geschluckt
+  # (sonst ENV-Fallback nutzlos); alles andere soll durchschlagen.
   def self.default_api_key
-    Rails.application.credentials.dig(:openai, :api_key) || ENV["OPENAI_API_KEY"]
-  rescue StandardError
-    ENV["OPENAI_API_KEY"]
+    key =
+      begin
+        Rails.application.credentials.dig(:openai, :api_key)
+      rescue ActiveSupport::EncryptedFile::MissingKeyError
+        nil
+      end
+
+    key || ENV["OPENAI_API_KEY"]
   end
 
   def call
@@ -175,12 +112,12 @@ class LieferscheinExtractor
     {
       model: MODEL,
       max_output_tokens: MAX_OUTPUT_TOKENS,
-      instructions: SYSTEM_PROMPT,
+      instructions: Prompt::SYSTEM,
       input: [
         {
           role: "user",
           content: [
-            { type: "input_text", text: USER_INSTRUCTION },
+            { type: "input_text", text: Prompt::USER_INSTRUCTION },
             file_content_part
           ]
         }
@@ -190,7 +127,7 @@ class LieferscheinExtractor
           type: "json_schema",
           name: "lieferschein",
           strict: true,
-          schema: SCHEMA
+          schema: Schema::ROOT
         }
       }
     }
@@ -221,15 +158,33 @@ class LieferscheinExtractor
     request["Content-Type"] = "application/json"
     request.body = JSON.generate(payload)
 
-    response = http.request(request)
+    response = execute_http_request(http, request)
     return response.body if response.is_a?(Net::HTTPSuccess)
 
     raise ApiError, "OpenAI-API HTTP #{response.code}: #{response.body}"
+  rescue *NETWORK_ERRORS => e
+    raise ApiError, "Netzwerkfehler beim Aufruf der OpenAI-API (#{e.class}): #{e.message}"
+  end
+
+  # Eigene Methode nur fuer den eigentlichen Netzwerk-Request, damit Tests
+  # gezielt einen Netzwerkfehler simulieren koennen (z. B. per
+  # define_singleton_method auf einer einzelnen Instanz), ohne Net::HTTP
+  # global zu stubben oder eine Mocking-Bibliothek zu brauchen.
+  def execute_http_request(http, request)
+    http.request(request)
   end
 
   def parse_response(body)
     data = JSON.parse(body)
     raise ApiError, data.dig("error", "message") || "Unbekannter API-Fehler" if data["error"]
+
+    # Muss VOR dem JSON.parse des Modell-Outputs geprueft werden: bei
+    # "incomplete" ist der Text abgeschnitten (nicht leer), JSON.parse wuerde
+    # scheitern und den eigentlichen Grund (z. B. Token-Limit) verschlucken.
+    if data["status"] == "incomplete"
+      grund = data.dig("incomplete_details", "reason") || "unbekannter Grund"
+      raise ApiError, "Antwort unvollstaendig abgebrochen (#{grund}) - ggf. MAX_OUTPUT_TOKENS erhoehen"
+    end
 
     parts = Array(data["output"]).flat_map { |item| Array(item["content"]) }
 
@@ -240,11 +195,7 @@ class LieferscheinExtractor
                 .map { |part| part["text"] }
                 .join
 
-    if text.strip.empty?
-      reason = data.dig("incomplete_details", "reason")
-      hinweis = reason ? " (#{reason})" : ""
-      raise ApiError, "Leere Antwort von der API#{hinweis}"
-    end
+    raise ApiError, "Leere Antwort von der API" if text.strip.empty?
 
     JSON.parse(text)
   rescue JSON::ParserError => e

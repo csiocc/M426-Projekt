@@ -1,7 +1,15 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { JsonPipe } from '@angular/common';
 import { SafeUrl } from '@angular/platform-browser';
+import { Subscription } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { FileUpload, FileUploadHandlerEvent, FileUploadModule } from 'primeng/fileupload';
@@ -37,6 +45,14 @@ export class Upload {
   protected readonly ergebnis = signal<JsonValue | null>(null);
   protected readonly fehler = signal<string | null>(null);
 
+  /** Solange true, ist ein Upload unterwegs und ein zweiter wird abgewiesen. */
+  protected readonly laeuft = computed(
+    () => this.status() === 'laedt' || this.status() === 'analysiert',
+  );
+
+  /** Der laufende Upload, damit "Entfernen" ihn abbrechen kann. */
+  private laufend: Subscription | null = null;
+
   /**
    * PrimeNG haengt nur an Bilder eine objectURL fuer die Vorschau. Fehlt sie,
    * ist es ein PDF und die Zeile zeigt stattdessen ein Icon.
@@ -50,6 +66,12 @@ export class Upload {
    * nichts selbst hoch, sondern uebergibt uns die Dateien.
    */
   protected onUpload(event: FileUploadHandlerEvent): void {
+    // Sperre gegen einen zweiten Klick auf "Hochladen": PrimeNG deaktiviert den
+    // Knopf zwar rechnerisch ueber uploadedFileCount, das ist aber ein einfaches
+    // Feld ohne Signal - das computed dahinter rechnet nicht neu und der Knopf
+    // bleibt anklickbar. Ohne diese Zeile ginge dieselbe Datei zweimal raus.
+    if (this.laeuft()) return;
+
     const file = event.files[0];
     if (!file) return;
 
@@ -58,7 +80,7 @@ export class Upload {
     this.ergebnis.set(null);
     this.fehler.set(null);
 
-    this.service
+    this.laufend = this.service
       .upload(file)
       .pipe(
         // Ab hier liegt die Datei beim Server, wir warten nur noch auf die KI.
@@ -80,10 +102,20 @@ export class Upload {
   }
 
   protected zuruecksetzen(uploader: FileUpload): void {
+    // Bricht einen noch laufenden Upload ab, sonst schriebe dessen Antwort
+    // spaeter ein Ergebnis in die frisch geleerte Oberflaeche.
+    this.laufend?.unsubscribe();
+    this.laufend = null;
+
     // PrimeNG zaehlt uploadedFileCount beim Hochladen hoch, setzt den Zaehler
     // beim Entfernen aber nicht zurueck. Zusammen mit fileLimit=1 bliebe
     // "Datei auswählen" danach dauerhaft gesperrt.
     uploader.uploadedFileCount = 0;
+    // uploadedFileCount ist ein einfaches Feld. Das computed hinter dem Knopf
+    // liest daneben nur das Signal _files, haengt also allein an der Dateiliste.
+    // Erst diese Zuweisung stoesst die Neuberechnung an - sonst wirkte das
+    // Zuruecksetzen nur zufaellig, weil onRemove/onClear die Liste ohnehin aendern.
+    uploader.files = [];
 
     this.status.set('bereit');
     this.dateiname.set(null);

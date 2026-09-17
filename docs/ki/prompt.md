@@ -14,10 +14,13 @@ Der Prompt besteht aus drei Teilen, die zusammen an die OpenAI **Responses-API**
 
 Modell: `gpt-4o-2024-08-06` (Vision + Structured Outputs). Für günstige Tests
 kann per Umgebungsvariable `OPENAI_MODEL=gpt-4o-mini` umgestellt werden.
+Token-Limit und Timeouts sind ebenfalls per ENV überschreibbar
+(`OPENAI_MAX_OUTPUT_TOKENS`, `OPENAI_OPEN_TIMEOUT`, `OPENAI_READ_TIMEOUT`).
 
-Der Prompt liegt im Code als Konstante `LieferscheinExtractor::SYSTEM_PROMPT`
-([`app/services/lieferschein_extractor.rb`](../../app/services/lieferschein_extractor.rb)).
-Diese Datei ist die lesbare Fassung/Begründung.
+Der Prompt liegt im Code als Konstante `LieferscheinExtractor::Prompt::SYSTEM`
+([`app/services/lieferschein_extractor/prompt.rb`](../../app/services/lieferschein_extractor/prompt.rb)) –
+bewusst aus dem Service ausgelagert, damit dieser nicht durch die Prompt-Texte
+aufgebläht wird. Diese Doku-Datei ist die lesbare Fassung/Begründung.
 
 ## System-Prompt (`instructions`)
 

@@ -95,7 +95,7 @@ class LieferscheinExtractorTest < ActiveSupport::TestCase
     format = captured.dig(:text, :format)
     assert_equal "json_schema", format[:type]
     assert format[:strict]
-    assert_equal LieferscheinExtractor::SCHEMA, format[:schema]
+    assert_equal LieferscheinExtractor::Schema::ROOT, format[:schema]
   end
 
   test "meldet ConfigurationError ohne API-Key" do
@@ -146,5 +146,56 @@ class LieferscheinExtractorTest < ActiveSupport::TestCase
       )
     end
     assert_match(/abgelehnt/, error.message)
+  end
+
+  test "meldet ApiError bei abgebrochener Antwort statt kaputtem JSON" do
+    # status: "incomplete" -> Text ist abgeschnitten, nicht leer. Vor dem Fix
+    # landete das in JSON.parse und der eigentliche Grund (Token-Limit) ging
+    # in einer "kein gueltiges JSON"-Meldung verloren.
+    body = {
+      "status" => "incomplete",
+      "incomplete_details" => { "reason" => "max_output_tokens" },
+      "output" => [
+        { "type" => "message", "role" => "assistant",
+          "content" => [ { "type" => "output_text", "text" => '{"kunde": {"name": "Abgeschni' } ] }
+      ]
+    }.to_json
+    transport = ->(_payload) { body }
+
+    error = assert_raises(LieferscheinExtractor::ApiError) do
+      LieferscheinExtractor.call(
+        io: StringIO.new("bild"), content_type: "image/png",
+        api_key: "test", transport: transport
+      )
+    end
+    assert_match(/max_output_tokens/, error.message)
+  end
+
+  test "meldet ApiError statt rohem Stacktrace bei Netzwerkfehler" do
+    extractor = LieferscheinExtractor.new(
+      io: StringIO.new("bild"), content_type: "image/png", api_key: "test"
+    )
+    # Nur die eine Instanz ueberschreiben (kein globales Stubbing noetig) -
+    # simuliert einen Netzwerkfehler beim eigentlichen Request.
+    extractor.define_singleton_method(:execute_http_request) do |*_args|
+      raise Net::OpenTimeout, "timeout"
+    end
+
+    error = assert_raises(LieferscheinExtractor::ApiError) { extractor.call }
+    assert_match(/Netzwerkfehler/, error.message)
+  end
+
+  test "from_attachment meldet AttachmentError ohne Anhang" do
+    assert_raises(LieferscheinExtractor::AttachmentError) do
+      LieferscheinExtractor.from_attachment(nil)
+    end
+  end
+
+  test "from_attachment meldet AttachmentError wenn nichts angehaengt ist" do
+    leerer_anhang = Class.new { def attached? = false }.new
+
+    assert_raises(LieferscheinExtractor::AttachmentError) do
+      LieferscheinExtractor.from_attachment(leerer_anhang)
+    end
   end
 end

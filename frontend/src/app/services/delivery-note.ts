@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
-import { Observable, first, map, switchMap, take, throwError, timer } from 'rxjs';
+import { Observable, exhaustMap, first, map, take, throwError, timer } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { DeliveryNote, JsonValue, validateFile } from '../models/delivery-note';
 
@@ -56,13 +56,18 @@ export class HttpDeliveryNoteService extends DeliveryNoteService {
    * Die API legt den Lieferschein sofort an, das Ergebnis der KI kommt aber
    * erst spaeter. Bis dahin liefert GET `result: null` - also fragen wir im
    * Takt nach und geben den ersten Treffer zurueck.
+   *
+   * exhaustMap statt switchMap: dauert eine Antwort laenger als das Intervall,
+   * wird der naechste Takt uebersprungen statt die laufende Anfrage abzubrechen.
+   * Mit switchMap kaeme bei einem dauerhaft langsamen Server nie eine Antwort
+   * durch und die Nutzerin saehe den Timeout, obwohl das Backend antwortet.
    */
   ergebnis(id: number): Observable<JsonValue> {
     const maxVersuche = Math.ceil(POLL_TIMEOUT_MS / POLL_INTERVAL_MS);
 
     return timer(0, POLL_INTERVAL_MS).pipe(
       take(maxVersuche),
-      switchMap(() => this.http.get<DeliveryNote>(`${API_URL}/${id}`)),
+      exhaustMap(() => this.http.get<DeliveryNote>(`${API_URL}/${id}`)),
       // Laeuft take() ab, bevor ein Ergebnis da ist, wirft first() - das ist
       // unser Timeout und landet unten im catchError.
       first((note) => note.result !== null),
