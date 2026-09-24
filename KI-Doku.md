@@ -57,7 +57,7 @@ Die Einträge stammen aus den Claude-Code-Sitzungen, aus den Pull Requests auf G
 
 | Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was haben wir übernommen? | Was haben wir verworfen? | Eigene Entscheidung |
 |---|---|---|---|---|---|---|
-| 03.09., Christian | Grundgerüst, Landingpage und Modell `DeliveryNote` | Rails-Projekt mit HAML und SQL-Datenbank aufsetzen, Startseite mit Upload-Feld, Lieferschein-Modell mit Datei-Anhang | Rückfragen zu Datenbank, CSS und Gems, danach Grundgerüst, Startseite und Modell mit Tests | Grundgerüst, überarbeitete Startseite, Modell | Erster Entwurf der Startseite, zu nah an einer Google-Kopie | SQLite und Tailwind, eigener Stil für die Startseite, Resultat als ein JSON-Feld, bewusst minimal für das MVP |
+| 03.09., Christian | Grundgerüst, Landingpage und Modell `DeliveryNote` | Rails-Projekt mit HAML und SQL-Datenbank aufsetzen | Rückfragen zu Datenbank, CSS und Gems, danach Grundgerüst | Grundgerüst erstellt -> rails projekt scaffolded |   | SQLite und Tailwind, bewusst minimal für das MVP |
 | 03.09., Copilot | CI-Fehler und automatischer Review | Fehlschlagende Jobs `test` und `scan_js`, Review von PR #7 und PR #9 | Zwei CI-Fixes (fehlendes `db/schema.rb`, fehlendes `libvips`) und Hinweise unter anderem zu SVG über `image/*` | CI-Fixes nach Prüfung gemergt, SVG-Hinweis am 10.09. mit einer festen Liste von Dateitypen gelöst | Bisher nicht umgesetzt: Fokus-Stile, Tippfehler, offener Datei-Handle im Test, Migrationsversion | |
 
 ### Tag 4, 10.09.2026
