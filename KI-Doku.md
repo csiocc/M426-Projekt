@@ -36,6 +36,8 @@ Wir verwenden Claude Code von Anthropic in VS Code und im Terminal. Der Assisten
 
 GitHub Copilot lief am Anfang mit. Der Copilot-Agent hat am 03.09. zwei fehlschlagende CI-Jobs analysiert und Fixes vorgeschlagen, die wir geprüft und gemergt haben. Der automatische Copilot-Review hat PR #7 und PR #9 kommentiert.
 
+ChatGPT beziehungsweise Codex wurde verwendet, um Scrum-Begriffe zu erklären, User Stories zu überprüfen, Texte für das Portfolio zu überarbeiten und die Scrum-Events vorzubereiten. Die vorgeschlagenen Inhalte wurden vom Team geprüft und an unser Projekt angepasst.
+
 ## Ablauf
 
 1. Der Product Owner priorisiert das Backlog in Jira. Daraus entsteht ein Issue und ein Branch, zum Beispiel `04-ki-verknuepfung`.
@@ -51,14 +53,14 @@ Von den mindestens zwei verbindlichen Reviewpunkten ist einer abgedeckt: „Code
 
 ## KI-Nutzungsnachweis
 
-Die Einträge stammen aus den Claude-Code-Sitzungen, aus den Pull Requests auf GitHub und aus den Commit-Nachrichten. Bei Andy und Melvin sind die Ergebnisse über ihre Commits belegt. Die genauen Prompts und seine eigenen Entscheide ergänzt Andy selbst, diese Felder sind mit „ergänzt Andy" markiert.
+Die Einträge stammen aus den Claude-Code-Sitzungen, aus den Pull Requests auf GitHub und aus den Commit-Nachrichten. Bei Andy und Melvin sind die Ergebnisse über ihre Commits belegt.
 
 ### Tag 3, 03.09.2026
 
 | Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was haben wir übernommen? | Was haben wir verworfen? | Eigene Entscheidung |
 |---|---|---|---|---|---|---|
-| 03.09., Christian | Grundgerüst, Landingpage und Modell `DeliveryNote` | Rails-Projekt mit HAML und SQL-Datenbank aufsetzen | Rückfragen zu Datenbank, CSS und Gems, danach Grundgerüst | Grundgerüst erstellt -> rails projekt scaffolded |   | SQLite und Tailwind, bewusst minimal für das MVP |
-| 03.09., Copilot | CI-Fehler und automatischer Review | Fehlschlagende Jobs `test` und `scan_js`, Review von PR #7 und PR #9 | Zwei CI-Fixes (fehlendes `db/schema.rb`, fehlendes `libvips`) und Hinweise unter anderem zu SVG über `image/*` | CI-Fixes nach Prüfung gemergt, SVG-Hinweis am 10.09. mit einer festen Liste von Dateitypen gelöst | Bisher nicht umgesetzt: Fokus-Stile, Tippfehler, offener Datei-Handle im Test, Migrationsversion | |
+| 03.09., Christian | Grundgerüst, Landingpage und Modell `DeliveryNote` | Rails-Projekt mit HAML und SQL-Datenbank aufsetzen | Die KI stellte Rückfragen zur Datenbank, zum CSS und zu den Gems und erstellte danach das Grundgerüst. | Das erstellte Grundgerüst wurde übernommen. | Nichts verworfen. | Wir entschieden uns für SQLite und Tailwind, damit das MVP möglichst einfach bleibt. |
+| 03.09., Copilot | CI-Fehler und automatischer Review | Fehlschlagende Jobs `test` und `scan_js` analysieren sowie PR #7 und PR #9 prüfen | Copilot schlug zwei CI-Fixes vor und gab weitere Hinweise zu den unterstützten Dateitypen, Fokus-Stilen, Tippfehlern, Tests und Migrationen. | Die CI-Fixes wurden nach der Prüfung gemergt. Die unterstützten Dateitypen wurden später mit einer festen Liste eingeschränkt. | Vorschläge zu Fokus-Stilen, Tippfehlern, einem offenen Datei-Handle im Test und der Migrationsversion wurden vorerst nicht umgesetzt. | Wir konzentrierten uns zuerst auf die CI-Fixes und die Funktionen, die für das MVP wichtig waren. |
 
 ### Tag 4, 10.09.2026
 
@@ -73,14 +75,26 @@ Die Einträge stammen aus den Claude-Code-Sitzungen, aus den Pull Requests auf G
 
 | Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was haben wir übernommen? | Was haben wir verworfen? | Eigene Entscheidung |
 |---|---|---|---|---|---|---|
-| 17.09., Andy | Die sechs Review-Kommentare zu PR #11 einarbeiten | Die sechs Inline-Kommentare von Christian aus PR #11 im Wortlaut eingefügt und um Umsetzung gebeten | Netzwerkfehler (Timeout, DNS, TLS, Verbindungsabbruch) werden als eigener Fehler gemeldet. Abgeschnittene Antworten nennen den echten Grund statt „kein gültiges JSON". Fehlender Anhang wird abgefangen, das zu breite `rescue` ist eingegrenzt, Token-Limit und Timeouts sind per Umgebungsvariable einstellbar, Prompt und Schema liegen in eigenen Dateien. Neue Tests für die Fehlerpfade | Alle sechs Punkte, Doku unter `docs/ki/` angepasst | Ein pauschales `rescue StandardError` als Lösung verworfen, stattdessen eine feste Liste konkreter Netzwerk-Exception-Klassen | Fehlerklassen bewusst eng gefasst statt breit gerescued, damit unerwartete Fehler weiter sichtbar bleiben; Token-Limit und Timeouts per ENV statt fest im Code, weil sich die passenden Werte erst im Test zeigen |
-| 17.09., Christian | Prüfen, ob Andys Fix die Review-Punkte abdeckt | Commit `17ee37d` gegen die sechs Kommentare prüfen, dazu eine Frage zu den `require`-Zeilen | Alle sechs umgesetzt, aber die Testsuite startet nicht, weil Minitest 6 `minitest/mock` nicht mehr enthält | Blocker als eigener Kommentar an Andy | | Merge erlaubt, sobald die Tests laufen |
-| 17.09., Andy | Testsuite wieder lauffähig machen | CI-Fehlerlog eingefügt (`LoadError: cannot load such file -- minitest/mock`) und um einen Fix gebeten | Der HTTP-Aufruf liegt in einer eigenen Methode, der Test ersetzt nur diese Methode auf einer einzelnen Instanz. Kein globales Stubbing, keine zusätzliche Abhängigkeit | Umbau von Service und Test, PR #11 danach gemergt | Das Gem `minitest-mock`, das im Review-Kommentar vorgeschlagen war | Kein zusätzliches Mocking-Gem eingeführt, sondern den Request in eine austauschbare, pro Testinstanz überschreibbare Methode ausgelagert |
-| 17.09., Christian | Issue #18: Upload, KI-Service und Resultat verknüpfen | Nach dem Upload den KI-Service aufrufen und das Resultat speichern | Job mit Tests, PR #20 | Job und Tests nach Review gemergt | | Kein neues Gem für die Job-Queue, Punkt im PR zur Diskussion gestellt |
-| 17.09., Christian | Zweite Meinung beim Review von PR #21 | PR reviewen | Drei blockierende Befunde und elf Kommentarvorschläge, Hinweis, dass Rails die `.env` nicht selbst liest | Sieben Kommentare, etwa zum doppelten Upload, zum Polling und zu `strict` im TypeScript | Vier Vorschläge zu Lizenz-Eintrag, Service-Klasse, Proxy-Kommentar und README, dazu `dotenv-rails` für eine einzige Variable | Testlauf mit echtem Lieferschein selbst durchgeführt. Melvin hat die Punkte eingearbeitet, danach freigegeben und gemergt |
-| 17.09., Melvin | Review-Punkte aus PR #21 einarbeiten | Die sieben Review-Kommentare von Christian zu PR #21 umsetzen | Upload gegen einen zweiten Klick gesperrt, Dateiauswahl und Drag & Drop während des Uploads deaktiviert, „Entfernen" bricht einen laufenden Upload ab. `zuruecksetzen()` setzt jetzt auch `uploader.files`, damit der Knopf nach dem Entfernen wieder freigegeben wird. Polling mit `exhaustMap` statt `switchMap`, damit langsame Antworten nicht abgebrochen werden. Dark Mode auf die Systemeinstellung umgestellt und die nirgends gesetzte Klasse `.app-dark` entfernt. TypeScript auf `strict`, `lang="de"` im HTML. Neuer CI-Job `frontend` mit Prettier-Check, Build und Tests | Alle sieben Punkte (Commit `18ea05a`), zusätzlich den Prettier-Check in der CI. Danach von Christian freigegeben und gemergt | Die Dark-Mode-Lösung mit `.app-dark` vom 10.09., weil die Klasse nirgends gesetzt wurde und der Dark Mode dadurch nie aktiv war | Dark Mode folgt der Systemeinstellung, kein eigener Umschalter |
+| 17.09., Andy | Die sechs Review-Kommentare zu PR #11 einarbeiten | Die sechs Inline-Kommentare von Christian aus PR #11 im Wortlaut eingefügt und um Umsetzung gebeten | Netzwerkfehler werden als eigener Fehler gemeldet. Abgeschnittene Antworten nennen den echten Grund. Fehlende Anhänge werden abgefangen, das zu breite `rescue` wurde eingegrenzt und Token-Limit sowie Timeouts sind einstellbar. Prompt und Schema liegen in eigenen Dateien. Neue Tests prüfen die Fehlerpfade. | Alle sechs Punkte wurden übernommen und die Dokumentation unter `docs/ki/` angepasst. | Ein pauschales `rescue StandardError` wurde verworfen. Stattdessen wurde eine feste Liste konkreter Netzwerkfehler verwendet. | Fehlerklassen wurden bewusst eng gefasst, damit unerwartete Fehler sichtbar bleiben. Token-Limit und Timeouts sind über Umgebungsvariablen einstellbar. |
+| 17.09., Christian | Prüfen, ob Andys Fix die Review-Punkte abdeckt | Commit `17ee37d` gegen die sechs Kommentare prüfen und die `require`-Zeilen kontrollieren | Alle sechs Kommentare waren umgesetzt. Die Testsuite konnte jedoch nicht starten, weil Minitest 6 `minitest/mock` nicht mehr enthält. | Der gefundene Blocker wurde als eigener Kommentar an Andy weitergegeben. | Keine Vorschläge verworfen. Der Merge wurde bis zur Behebung des Testfehlers blockiert. | Der Merge wurde erst erlaubt, nachdem die Tests wieder funktionierten. |
+| 17.09., Andy | Testsuite wieder lauffähig machen | CI-Fehlerlog mit `LoadError: cannot load such file -- minitest/mock` eingefügt und um einen Fix gebeten | Der HTTP-Aufruf wurde in eine eigene Methode ausgelagert. Der Test ersetzt nur diese Methode auf einer einzelnen Instanz. Dadurch waren kein globales Stubbing und keine zusätzliche Abhängigkeit notwendig. | Service und Test wurden umgebaut. PR #11 wurde danach gemergt. | Das im Review vorgeschlagene Gem `minitest-mock` wurde nicht eingesetzt. | Es wurde kein zusätzliches Mocking-Gem eingeführt. Stattdessen wurde der Request in eine pro Testinstanz austauschbare Methode ausgelagert. |
+| 17.09., Christian | Issue #18: Upload, KI-Service und Resultat verknüpfen | Nach dem Upload den KI-Service aufrufen und das Resultat speichern | Die KI erstellte einen Job mit Tests. Die Änderungen wurden in PR #20 eingereicht. | Der Job und die Tests wurden nach dem Review gemergt. | Ein zusätzliches Gem für die Job-Queue wurde nicht eingesetzt. | Die vorhandene Rails-Lösung wurde verwendet, damit keine unnötige zusätzliche Abhängigkeit entsteht. |
+| 17.09., Christian | Zweite Meinung beim Review von PR #21 | PR #21 überprüfen | Die KI fand drei blockierende Punkte und erstellte elf Kommentarvorschläge. Ausserdem wurde erkannt, dass Rails die `.env`-Datei nicht selbst lädt. | Sieben Kommentare wurden übernommen, unter anderem zum doppelten Upload, zum Polling und zu `strict` in TypeScript. | Vier Vorschläge zu Lizenz-Eintrag, Service-Klasse, Proxy-Kommentar und README sowie `dotenv-rails` für eine einzelne Variable wurden verworfen. | Das Team führte selbst einen Test mit einem Lieferschein durch. Nach der Überarbeitung durch Melvin wurde der PR freigegeben und gemergt. |
+| 17.09., Melvin | Review-Punkte aus PR #21 einarbeiten | Die sieben Review-Kommentare von Christian zu PR #21 umsetzen | Ein zweiter Upload wurde gesperrt, Dateiauswahl und Drag-and-drop wurden während des Uploads deaktiviert und ein laufender Upload kann abgebrochen werden. Das Polling wurde verbessert, der Dark Mode korrigiert, TypeScript auf `strict` gesetzt und ein neuer CI-Job für das Frontend ergänzt. | Alle sieben Punkte und zusätzlich der Prettier-Check wurden übernommen. Die Änderungen wurden von Christian geprüft und gemergt. | Die bisherige Dark-Mode-Lösung mit `.app-dark` wurde verworfen, weil diese Klasse nirgends gesetzt wurde. | Der Dark Mode folgt neu der Systemeinstellung. Auf einen eigenen Umschalter wurde verzichtet. |
 
-Für Tag 1 und Tag 2 wurde keine KI verwendet.
+### Tag 1 und Tag 2
+
+An Tag 1 wurde keine KI verwendet.
+
+An Tag 2 wurde KI als Sparringspartner für die Product Vision verwendet. Die KI half uns dabei, die Zielgruppe, den Nutzen und den Umfang des Produkts zu überprüfen. Die Vorschläge wurden vom Team kontrolliert und an unsere Produktidee angepasst.
+
+Nicht übernommen wurde die Idee, Lieferscheine in der App zu erstellen. Das Team entschied selbst, dass Lieferscheine hochgeladen, mit KI analysiert und als JSON ausgegeben werden sollen.
+
+## Datenschutz
+
+Für die Tests wurden nur Testdokumente oder anonymisierte Lieferscheine verwendet. Vertrauliche Kundendaten, Passwörter und API-Schlüssel werden nicht im Repository oder in der Dokumentation gespeichert.
+
+Ein API-Schlüssel, der versehentlich in einem Chat geteilt wurde, wurde sofort widerrufen und ersetzt.
 
 ## Reflexion
 
