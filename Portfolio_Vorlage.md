@@ -72,6 +72,17 @@ Wir haben die MoSCoW-Methode verwendet. Diese Methode hilft uns zu unterscheiden
 
 Für Sprint 1 konzentrieren wir uns auf die wichtigsten MVP-Funktionen: Upload, KI-Erkennung und eine erste strukturierte Ausgabe. Verbesserungen wie Vorschau, bessere Fehlerbehandlung und Download-Funktionen werden später eingeplant.
 
+### Definition of Done
+
+Eine User Story gilt für uns als erledigt, wenn:
+
+- die Funktion umgesetzt und lauffähig ist,
+- die Akzeptanzkriterien erfüllt sind,
+- die Funktion getestet wurde,
+- der Code im Repository vorhanden ist,
+- die Funktion im Review gezeigt werden kann,
+- Jira aktualisiert wurde.
+
 ## 4. Sprint-Dokumentation
 
 ### Sprint 1
@@ -79,20 +90,24 @@ Für Sprint 1 konzentrieren wir uns auf die wichtigsten MVP-Funktionen: Upload, 
 | Punkt                               | Inhalt                                                                                                                        |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Sprintziel                          | Ein erstes klickbares MVP erstellen, bei dem ein Lieferschein hochgeladen und erste Daten durch die KI erkannt werden können. |
-| ausgewählte User Stories            | Upload, Kundendaten, Artikel/Mengen, Lieferdatum/Lieferadresse                                                                |
-| Review-Ergebnis                     | Noch offen                                                                                                                    |
-| Retro-Erkenntnis                    | Noch offen                                                                                                                    |
-| Verbesserungsmassnahme für Sprint 2 | Noch offen                                                                                                                    |
+| Ausgewählte User Stories            | Upload, Kundendaten, Artikel und Mengen, Lieferdatum und Lieferadresse                                                        |
+| Review-Ergebnis                     | Das Sprintziel wurde erreicht. Alle ausgewählten User Stories wurden umgesetzt und im Review erfolgreich gezeigt.             |
+| Retro-Erkenntnis                    | Die Aufgabenverteilung und die Zusammenarbeit im Team haben gut funktioniert.                                                |
+| Verbesserungsmassnahme für Sprint 2 | Die erfolgreiche Aufgabenverteilung wird beibehalten und Zwischenergebnisse werden regelmässig gemeinsam getestet.            |
+
+#### Nachweis Sprint 1
+
+![Abgeschlossenes Sprint-1-Board](./sprint1-board.png)
 
 ### Sprint 2
 
-| Punkt                               | Inhalt                                                                                                                         |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Sprintziel                          | Die Webapp verbessern, damit erkannte Daten als JSON ausgegeben, kontrolliert und Fehler verständlich angezeigt werden können. |
-| ausgewählte User Stories            | JSON-Ausgabe, bessere KI-Analyse, Vorschau, Statusanzeige, Fehlermeldung                                                       |
-| Review-Ergebnis                     | Noch offen                                                                                                                     |
-| Retro-Erkenntnis                    | Noch offen                                                                                                                     |
-| Verbesserungsmassnahme für Sprint 3 | Noch offen                                                                                                                     |
+| Punkt                               | Inhalt                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Sprintziel                          | Die Webapp verbessern, damit die KI zuverlässiger arbeitet und Ergebnisse verständlich kontrolliert werden können. |
+| Ausgewählte User Stories            | Bessere KI-Analyse, Vorschau der erkannten Daten, Fehlermeldung bei ungültiger Datei                                |
+| Review-Ergebnis                     | Noch offen                                                                                                          |
+| Retro-Erkenntnis                    | Noch offen                                                                                                          |
+| Verbesserungsmassnahme für Sprint 3 | Noch offen                                                                                                          |
 
 ### Sprint 3
 
@@ -125,17 +140,9 @@ Jedes Teammitglied ergänzt kurz:
 
 ## 7. KI-Nutzungsnachweis
 
-Wenn ihr KI verwendet habt, dokumentiert die Nutzung hier oder verlinkt auf eine separate Datei.
+Unsere KI-Nutzung wird in einer separaten Dokumentation festgehalten. Darin dokumentieren wir, wofür KI eingesetzt wurde, welche Ergebnisse übernommen oder verworfen wurden und welche Entscheidungen wir selbst getroffen haben.
 
-| Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was wurde übernommen? | Was wurde verworfen? | eigene Entscheidung |
-| ------------ | ----------------------- | ---------------------------- | --------------- | --------------------- | -------------------- | ------------------- |
-|              |                         |                              |                 |                       |                      |                     |
-
-Wenn ihr in einem Sprint keine KI verwendet habt:
-
-```text
-In diesem Sprint wurde keine KI verwendet.
-```
+[KI-Dokumentation öffnen](./KI-Doku.md)
 
 ## 8. Abschlussreflexion
 
