@@ -44,10 +44,44 @@ function ausloesen(fixture: ComponentFixture<Upload>, file: File): void {
 }
 
 const pngDatei = () => new File(['x'], 'lieferschein.png', { type: 'image/png' });
+const pdfDatei = () => new File(['x'], 'lieferschein.pdf', { type: 'application/pdf' });
 const textVon = (fixture: ComponentFixture<Upload>) =>
   (fixture.nativeElement as HTMLElement).textContent ?? '';
+const editorVon = (fixture: ComponentFixture<Upload>) =>
+  (fixture.nativeElement as HTMLElement).querySelector('textarea') as HTMLTextAreaElement;
+
+/** Tippt einen neuen Inhalt in den JSON-Editor, wie es die Nutzerin taete. */
+async function eintippen(fixture: ComponentFixture<Upload>, text: string): Promise<void> {
+  const editor = editorVon(fixture);
+  editor.value = text;
+  editor.dispatchEvent(new Event('input'));
+  await fixture.whenStable();
+}
+
+/** Ein Lieferschein, bei dem alle Pflichtangaben vorhanden sind. */
+const vollstaendig = (): { [key: string]: JsonValue } => ({
+  kunde: {
+    name: 'Muster AG',
+    adresse: { strasse: 'Bahnhofstrasse 1', plz: '8001', ort: 'Zürich' },
+  },
+  lieferadresse: {
+    name: 'Baustelle Nord',
+    strasse: 'Industrieweg 5',
+    plz: '8600',
+    ort: 'Dübendorf',
+  },
+  lieferdatum: '2026-09-10',
+  positionen: [{ bezeichnung: 'Schrauben 4x30', menge: 250 }],
+  warnungen: [],
+});
 
 describe('Upload', () => {
+  // jsdom kennt keine Object-URLs - die Komponente braucht sie fuer die Dateivorschau.
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:http://localhost/vorschau');
+    URL.revokeObjectURL = vi.fn();
+  });
+
   it('should create', async () => {
     const fixture = await setup(new StubService(of(1)));
     expect(fixture.componentInstance).toBeTruthy();
@@ -67,10 +101,99 @@ describe('Upload', () => {
     ausloesen(fixture, pngDatei());
     await fixture.whenStable();
 
+    expect(textVon(fixture)).toContain('lieferschein.png');
+    const json = editorVon(fixture).value;
+    expect(json).toContain('"lieferschein_nummer": "LS-2026-0042"');
+  });
+
+  it('zeigt ein hochgeladenes PDF links im iframe an', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('iframe')?.getAttribute('src')).toBe(
+      'blob:http://localhost/vorschau',
+    );
+    expect(element.querySelector('img[alt="lieferschein.pdf"]')).toBeNull();
+  });
+
+  it('zeigt ein hochgeladenes Bild links als img an', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pngDatei());
+    await fixture.whenStable();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('img[alt="lieferschein.png"]')?.getAttribute('src')).toBe(
+      'blob:http://localhost/vorschau',
+    );
+    expect(element.querySelector('iframe')).toBeNull();
+  });
+
+  it('meldet bei vollstaendigen Daten keine Fehler', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    expect(textVon(fixture)).toContain('Alle Pflichtangaben vorhanden.');
+  });
+
+  it('zeigt fehlende Angaben nach einer Bearbeitung an', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const daten = vollstaendig();
+    (daten['kunde'] as { [key: string]: JsonValue })['name'] = null;
+    await eintippen(fixture, JSON.stringify(daten));
+
     const text = textVon(fixture);
-    expect(text).toContain('lieferschein.png');
-    expect(text).toContain('lieferschein_nummer');
-    expect(text).toContain('LS-2026-0042');
+    expect(text).toContain('Fehlende oder fehlerhafte Angaben (1)');
+    expect(text).toContain('kunde.name fehlt');
+  });
+
+  it('meldet ungueltiges JSON im Editor', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    await eintippen(fixture, '{ "kunde": ');
+
+    expect(textVon(fixture)).toContain('Ungültiges JSON');
+  });
+
+  it('stellt die erkannten Daten nach einer Bearbeitung wieder her', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+    const original = editorVon(fixture).value;
+
+    await eintippen(fixture, '{}');
+    (fixture.componentInstance as unknown as { wiederherstellen: () => void }).wiederherstellen();
+    await fixture.whenStable();
+
+    expect(editorVon(fixture).value).toBe(original);
+    expect(textVon(fixture)).toContain('Alle Pflichtangaben vorhanden.');
+  });
+
+  it('zeigt eine Fehlerantwort des Jobs als Fehler statt als Ergebnis', async () => {
+    const fixture = await setup(new StubService(of(1), of({ fehler: 'KI nicht erreichbar' })));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    expect(textVon(fixture)).toContain('KI nicht erreichbar');
+    expect(editorVon(fixture)).toBeNull();
+  });
+
+  it('gibt die Object-URL beim Entfernen wieder frei', async () => {
+    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
+    const komponente = fixture.componentInstance as unknown as {
+      zuruecksetzen: (u: { uploadedFileCount: number; files: File[] }) => void;
+    };
+    ausloesen(fixture, pdfDatei());
+    komponente.zuruecksetzen({ uploadedFileCount: 1, files: [] });
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/vorschau');
   });
 
   it('liefert nur fuer Bilder eine Vorschau, nicht fuer PDF', async () => {
