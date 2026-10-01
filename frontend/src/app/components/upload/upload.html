@@ -1,4 +1,4 @@
-<!-- Mit Ergebnis doppelt so breit, damit Datei und JSON nebeneinander Platz haben. -->
+<!-- Mit Ergebnis doppelt so breit, damit Datei und Formular nebeneinander Platz haben. -->
 <section
   class="mx-auto flex min-h-screen w-full flex-col justify-center px-6 py-12"
   [class.max-w-7xl]="status() === 'fertig'"
@@ -95,85 +95,491 @@
   }
 
   @if (status() === 'fehler') {
-    <p-message severity="error" styleClass="mt-8 w-full">{{ fehler() }}</p-message>
+    <p-message severity="error" styleClass="mt-8 w-full">
+      <!-- min-w-0 + break-words: rohe API-Antworten koennen sehr lang und ohne
+           Leerzeichen sein und wuerden sonst die Seite verbreitern. -->
+      <div class="min-w-0" role="alert">
+        <p class="font-semibold">{{ fehlerTitel() }}</p>
+        <p class="mt-1 text-sm break-words opacity-80">{{ fehler() }}</p>
+      </div>
+    </p-message>
   }
 
-  @if (status() === 'fertig') {
-    <!-- Vorschau: links die Originaldatei, rechts das JSON zum Korrigieren.
-         Auf schmalen Bildschirmen untereinander. -->
+  @if (status() === 'fertig' && daten(); as d) {
+    @let f = feldFehler();
+    <!-- Vorschau: links das Original, rechts die erkannten Daten zum Korrigieren.
+         Beide Karten gleich hoch, auf schmalen Bildschirmen untereinander. -->
     <section class="mt-8 grid gap-6 lg:grid-cols-2">
-      <div class="flex min-w-0 flex-col">
-        <h2 class="mb-3 text-xl font-semibold text-surface-900 dark:text-surface-0">
-          Hochgeladene Datei: {{ dateiname() }}
-        </h2>
+      <article
+        class="flex h-[85vh] min-w-0 flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+      >
+        <header
+          class="flex shrink-0 items-center gap-3 border-b border-surface-200 px-4 py-3 dark:border-surface-700"
+        >
+          <i
+            class="pi text-lg"
+            [class]="istPdf() ? 'pi-file-pdf text-red-500' : 'pi-image text-primary'"
+            aria-hidden="true"
+          ></i>
+          <div class="min-w-0">
+            <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Original</h2>
+            <p class="truncate text-xs text-surface-500">{{ dateiname() }}</p>
+          </div>
+        </header>
         @if (dateiUrl(); as url) {
           @if (istPdf()) {
-            <iframe
-              [src]="url"
-              [title]="dateiname()"
-              class="h-[80vh] w-full rounded-lg border border-surface-200 dark:border-surface-700"
-            ></iframe>
+            <iframe [src]="url" [title]="dateiname()" class="w-full flex-1 border-0"></iframe>
           } @else {
             <img
               [src]="url"
               [alt]="dateiname()"
-              class="h-[80vh] w-full rounded-lg border border-surface-200 bg-surface-0 object-contain dark:border-surface-700 dark:bg-surface-900"
+              class="min-h-0 w-full flex-1 bg-surface-50 object-contain p-4 dark:bg-surface-950"
             />
           }
         }
-      </div>
+      </article>
 
-      <div class="flex min-w-0 flex-col">
-        <div class="mb-3 flex items-center justify-between gap-4">
-          <h2 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
-            Erkannte Daten (JSON)
-          </h2>
+      <article
+        class="flex h-[85vh] min-w-0 flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+      >
+        <header
+          class="flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-200 px-4 py-3 dark:border-surface-700"
+        >
+          <div class="mr-auto min-w-0">
+            <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
+              Erkannte Daten
+            </h2>
+            <p class="text-xs text-surface-500">Vor dem Export prüfen und korrigieren</p>
+          </div>
+          @if (hinweise().length > 0) {
+            <p-tag
+              severity="warn"
+              icon="pi pi-exclamation-triangle"
+              [value]="hinweise().length + ' Fehler'"
+            />
+          } @else {
+            <p-tag severity="success" icon="pi pi-check-circle" value="Vollständig" />
+          }
+          @if (kiHinweise().length > 0) {
+            <p-tag
+              severity="info"
+              icon="pi pi-sparkles"
+              [value]="
+                kiHinweise().length === 1 ? '1 KI-Hinweis' : kiHinweise().length + ' KI-Hinweise'
+              "
+            />
+          }
           <button
             type="button"
             pButton
             text
+            rounded
             size="small"
+            severity="secondary"
             icon="pi pi-undo"
-            label="Erkannte Daten wiederherstellen"
+            aria-label="Erkannte Daten wiederherstellen"
+            title="Erkannte Daten wiederherstellen"
             [disabled]="!geaendert()"
             (click)="wiederherstellen()"
           ></button>
-        </div>
-        <textarea
-          pTextarea
-          aria-label="Erkannte Daten als JSON"
-          spellcheck="false"
-          class="h-[80vh] w-full resize-none font-mono text-sm"
-          [invalid]="!geparst().ok"
-          [value]="jsonText()"
-          (input)="onJsonEingabe($event)"
-        ></textarea>
-      </div>
-    </section>
+        </header>
 
-    @if (geparst(); as g) {
-      @if (!g.ok) {
-        <p-message severity="error" styleClass="mt-6 w-full">
-          Ungültiges JSON: {{ g.meldung }}
-        </p-message>
-      } @else if (hinweise().length > 0) {
-        <p-message severity="warn" styleClass="mt-6 w-full">
-          <div>
-            <p class="mb-2 font-semibold">
-              Fehlende oder fehlerhafte Angaben ({{ hinweise().length }})
-            </p>
-            <ul class="list-disc space-y-1 pl-5">
-              @for (hinweis of hinweise(); track $index) {
-                <li>{{ hinweis }}</li>
-              }
-            </ul>
+        <!-- Umschalter: bearbeiten im Formular oder ansehen, was als JSON rausgeht. -->
+        <nav
+          class="flex shrink-0 gap-1 border-b border-surface-200 px-4 text-sm dark:border-surface-700"
+          aria-label="Ansicht"
+        >
+          <button
+            type="button"
+            class="-mb-px cursor-pointer border-b-2 px-3 py-2 font-medium"
+            [class]="
+              ansicht() === 'formular'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-surface-500'
+            "
+            [attr.aria-pressed]="ansicht() === 'formular'"
+            (click)="zeigeAnsicht('formular')"
+          >
+            Formular
+          </button>
+          <button
+            type="button"
+            class="-mb-px cursor-pointer border-b-2 px-3 py-2 font-medium"
+            [class]="
+              ansicht() === 'json'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-surface-500'
+            "
+            [attr.aria-pressed]="ansicht() === 'json'"
+            (click)="zeigeAnsicht('json')"
+          >
+            JSON
+          </button>
+        </nav>
+
+        <!-- Eigene Fehler (gelb) und Vermutungen der KI (blau) getrennt.
+             Beide aufklappbar und in der Hoehe begrenzt, damit sie das
+             Formular nicht nach unten schieben. -->
+        @if (hinweise().length > 0) {
+          <div
+            class="shrink-0 border-b border-amber-200 bg-amber-50 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100"
+          >
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-semibold"
+              [attr.aria-expanded]="fehlerOffen()"
+              (click)="fehlerOffen.set(!fehlerOffen())"
+            >
+              <i class="pi pi-exclamation-triangle text-xs" aria-hidden="true"></i>
+              <span class="flex-1"
+                >Fehlende oder fehlerhafte Angaben ({{ hinweise().length }})</span
+              >
+              <i
+                class="pi text-xs"
+                [class]="fehlerOffen() ? 'pi-chevron-up' : 'pi-chevron-down'"
+                aria-hidden="true"
+              ></i>
+            </button>
+            @if (fehlerOffen()) {
+              <dl class="max-h-32 space-y-2 overflow-y-auto px-4 pb-3">
+                @for (gruppe of hinweisGruppen(); track gruppe.bereich) {
+                  <div>
+                    <dt class="text-xs font-semibold tracking-wide uppercase opacity-70">
+                      {{ gruppe.bereich }}
+                    </dt>
+                    @for (hinweis of gruppe.hinweise; track hinweis.feld) {
+                      <dd>
+                        <button
+                          type="button"
+                          class="cursor-pointer text-left hover:underline"
+                          title="Zum Feld springen"
+                          (click)="zumFeld(hinweis.feld)"
+                        >
+                          {{ hinweis.text }}
+                        </button>
+                      </dd>
+                    }
+                  </div>
+                }
+              </dl>
+            }
           </div>
-        </p-message>
-      } @else {
-        <p-message severity="success" styleClass="mt-6 w-full">
-          Alle Pflichtangaben vorhanden.
-        </p-message>
-      }
-    }
+        }
+
+        @if (kiHinweise().length > 0) {
+          <div
+            class="shrink-0 border-b border-sky-200 bg-sky-50 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100"
+          >
+            <button
+              type="button"
+              class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-semibold"
+              [attr.aria-expanded]="kiOffen()"
+              (click)="kiOffen.set(!kiOffen())"
+            >
+              <i class="pi pi-sparkles text-xs" aria-hidden="true"></i>
+              <span class="flex-1">Hinweise der KI ({{ kiHinweise().length }})</span>
+              <i
+                class="pi text-xs"
+                [class]="kiOffen() ? 'pi-chevron-up' : 'pi-chevron-down'"
+                aria-hidden="true"
+              ></i>
+            </button>
+            @if (kiOffen()) {
+              <ul class="max-h-24 list-disc space-y-1 overflow-y-auto pr-4 pb-3 pl-9">
+                @for (hinweis of kiHinweise(); track $index) {
+                  <li>{{ hinweis }}</li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
+        <div class="min-h-0 flex-1 overflow-y-auto">
+          @if (ansicht() === 'json') {
+            <!-- Dieselben Daten wie im Formular, nur als JSON. Gueltige
+                 Aenderungen landen sofort im Formular und in der Pruefung. -->
+            <div class="flex h-full flex-col">
+              @if (jsonFehler(); as meldung) {
+                <div
+                  role="alert"
+                  class="shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
+                >
+                  <p class="font-semibold">
+                    Ungültiges JSON – prüfe Klammern, Kommas und Anführungszeichen.
+                  </p>
+                  <p class="text-xs opacity-80">
+                    Das Formular zeigt den letzten gültigen Stand. {{ meldung }}
+                  </p>
+                </div>
+              }
+              <textarea
+                pTextarea
+                aria-label="Erkannte Daten als JSON bearbeiten"
+                spellcheck="false"
+                class="min-h-0 w-full flex-1 resize-none rounded-none border-0 p-4 font-mono text-xs leading-relaxed shadow-none"
+                [invalid]="jsonFehler() !== null"
+                [value]="jsonText()"
+                (input)="onJsonEingabe($event)"
+              ></textarea>
+            </div>
+          } @else {
+            <form class="space-y-6 p-4 text-sm" (submit)="$event.preventDefault()">
+              <fieldset>
+                <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">
+                  Kunde
+                </legend>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs font-medium text-surface-600 dark:text-surface-300"
+                      >Name</span
+                    >
+                    <input
+                      pInputText
+                      pSize="small"
+                      id="feld-kunde.name"
+                      [value]="d.kunde.name ?? ''"
+                      [invalid]="f.has('kunde.name')"
+                      [class.feld-fehler]="f.has('kunde.name')"
+                      (input)="setzeKunde('name', $event)"
+                    />
+                    @if (f.get('kunde.name'); as text) {
+                      <small class="text-xs text-red-600 dark:text-red-400">{{ text }}</small>
+                    }
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs font-medium text-surface-600 dark:text-surface-300"
+                      >Kundennummer</span
+                    >
+                    <input
+                      pInputText
+                      pSize="small"
+                      [value]="d.kunde.kundennummer ?? ''"
+                      (input)="setzeKunde('kundennummer', $event)"
+                    />
+                  </label>
+                  @for (feld of kundenAdressfelder; track feld) {
+                    @let pfad = 'kunde.adresse.' + feld;
+                    <label class="flex flex-col gap-1">
+                      <span class="text-xs font-medium text-surface-600 dark:text-surface-300">{{
+                        adressfelder[feld]
+                      }}</span>
+                      <input
+                        pInputText
+                        pSize="small"
+                        [id]="'feld-' + pfad"
+                        [value]="d.kunde.adresse[feld] ?? ''"
+                        [invalid]="f.has(pfad)"
+                        [class.feld-fehler]="f.has(pfad)"
+                        (input)="setzeAdresse('kunde', feld, $event)"
+                      />
+                      @if (f.get(pfad); as text) {
+                        <small class="text-xs text-red-600 dark:text-red-400">{{ text }}</small>
+                      }
+                    </label>
+                  }
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">
+                  Lieferadresse
+                </legend>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  @for (feld of lieferAdressfelder; track feld) {
+                    @let pfad = 'lieferadresse.' + feld;
+                    <label class="flex flex-col gap-1" [class.sm:col-span-2]="feld === 'name'">
+                      <span class="text-xs font-medium text-surface-600 dark:text-surface-300">{{
+                        adressfelder[feld]
+                      }}</span>
+                      <input
+                        pInputText
+                        pSize="small"
+                        [id]="'feld-' + pfad"
+                        [value]="d.lieferadresse[feld] ?? ''"
+                        [invalid]="f.has(pfad)"
+                        [class.feld-fehler]="f.has(pfad)"
+                        (input)="setzeAdresse('lieferadresse', feld, $event)"
+                      />
+                      @if (f.get(pfad); as text) {
+                        <small class="text-xs text-red-600 dark:text-red-400">{{ text }}</small>
+                      }
+                    </label>
+                  }
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">
+                  Lieferung
+                </legend>
+                <div class="grid gap-3 sm:grid-cols-3">
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs font-medium text-surface-600 dark:text-surface-300"
+                      >Lieferdatum</span
+                    >
+                    <input
+                      pInputText
+                      pSize="small"
+                      type="date"
+                      id="feld-lieferdatum"
+                      [value]="d.lieferdatum ?? ''"
+                      [invalid]="f.has('lieferdatum')"
+                      [class.feld-fehler]="f.has('lieferdatum')"
+                      (input)="setzeKopf('lieferdatum', $event)"
+                    />
+                    @if (f.get('lieferdatum'); as text) {
+                      <small class="text-xs text-red-600 dark:text-red-400">{{ text }}</small>
+                    }
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs font-medium text-surface-600 dark:text-surface-300"
+                      >Lieferschein-Nr.</span
+                    >
+                    <input
+                      pInputText
+                      pSize="small"
+                      [value]="d.lieferschein_nummer ?? ''"
+                      (input)="setzeKopf('lieferschein_nummer', $event)"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-1">
+                    <span class="text-xs font-medium text-surface-600 dark:text-surface-300"
+                      >Bestellnummer</span
+                    >
+                    <input
+                      pInputText
+                      pSize="small"
+                      [value]="d.bestellnummer ?? ''"
+                      (input)="setzeKopf('bestellnummer', $event)"
+                    />
+                  </label>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">
+                  Artikel
+                </legend>
+                @if (f.get('positionen'); as text) {
+                  <p class="mb-2 text-xs text-red-600 dark:text-red-400">{{ text }}</p>
+                }
+                <div class="overflow-x-auto">
+                  <!-- table-fixed: feste Breiten fuer die kurzen Spalten, den ganzen
+                       Rest bekommt die Bezeichnung fuer lange Artikelnamen. -->
+                  <table
+                    class="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-1"
+                  >
+                    <colgroup>
+                      <col class="w-12" />
+                      <col class="w-32" />
+                      <col />
+                      <col class="w-24" />
+                      <col class="w-24" />
+                      <col class="w-10" />
+                    </colgroup>
+                    <thead>
+                      <tr class="text-left text-xs text-surface-600 dark:text-surface-300">
+                        <th class="font-medium">Pos.</th>
+                        <th class="font-medium">Artikel-Nr.</th>
+                        <th class="font-medium">Bezeichnung</th>
+                        <th class="font-medium">Menge</th>
+                        <th class="font-medium">Einheit</th>
+                        <th><span class="sr-only">Aktion</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (position of d.positionen; track $index; let i = $index) {
+                        @let bezeichnungFeld = 'positionen.' + i + '.bezeichnung';
+                        @let mengeFeld = 'positionen.' + i + '.menge';
+                        <tr>
+                          <!-- Nur Anzeige: so kann niemand eine Nummer doppelt vergeben. -->
+                          <td class="pr-1 text-surface-600 tabular-nums dark:text-surface-300">
+                            {{ position.position ?? i + 1 }}
+                          </td>
+                          <td class="pr-1">
+                            <input
+                              pInputText
+                              pSize="small"
+                              class="w-full"
+                              aria-label="Artikelnummer"
+                              [value]="position.artikelnummer ?? ''"
+                              (input)="setzeText(i, 'artikelnummer', $event)"
+                            />
+                          </td>
+                          <td class="pr-1">
+                            <input
+                              pInputText
+                              pSize="small"
+                              class="w-full"
+                              aria-label="Bezeichnung"
+                              [id]="'feld-' + bezeichnungFeld"
+                              [value]="position.bezeichnung"
+                              [invalid]="f.has(bezeichnungFeld)"
+                              [class.feld-fehler]="f.has(bezeichnungFeld)"
+                              [title]="f.get(bezeichnungFeld) ?? ''"
+                              (input)="setzeText(i, 'bezeichnung', $event)"
+                            />
+                          </td>
+                          <td class="pr-1">
+                            <input
+                              pInputText
+                              pSize="small"
+                              type="number"
+                              min="0"
+                              step="any"
+                              class="w-full"
+                              aria-label="Menge"
+                              [id]="'feld-' + mengeFeld"
+                              [value]="position.menge ?? ''"
+                              [invalid]="f.has(mengeFeld)"
+                              [class.feld-fehler]="f.has(mengeFeld)"
+                              [title]="f.get(mengeFeld) ?? ''"
+                              (input)="setzeMenge(i, $event)"
+                            />
+                          </td>
+                          <td class="pr-1">
+                            <input
+                              pInputText
+                              pSize="small"
+                              class="w-full"
+                              aria-label="Einheit"
+                              [value]="position.einheit ?? ''"
+                              (input)="setzeText(i, 'einheit', $event)"
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              pButton
+                              text
+                              rounded
+                              size="small"
+                              severity="danger"
+                              icon="pi pi-trash"
+                              [attr.aria-label]="'Position ' + (i + 1) + ' entfernen'"
+                              (click)="positionEntfernen(i)"
+                            ></button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  pButton
+                  text
+                  size="small"
+                  icon="pi pi-plus"
+                  label="Position hinzufügen"
+                  id="feld-positionen"
+                  (click)="positionHinzufuegen()"
+                ></button>
+              </fieldset>
+            </form>
+          }
+        </div>
+      </article>
+    </section>
   }
 </section>

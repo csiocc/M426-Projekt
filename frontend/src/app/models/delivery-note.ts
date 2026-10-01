@@ -59,10 +59,6 @@ function istObjekt(wert: JsonValue | undefined): wert is JsonObjekt {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert);
 }
 
-function istLeer(wert: JsonValue | undefined): boolean {
-  return wert === undefined || wert === null || (typeof wert === 'string' && wert.trim() === '');
-}
-
 /**
  * Der Job schreibt bei einem KI-Fehler `{"fehler": "..."}` als Resultat.
  * Gibt dann die Meldung zurueck, sonst null.
@@ -72,20 +68,114 @@ export function fehlerAusAntwort(wert: JsonValue): string | null {
   return null;
 }
 
-/** Prueft die Pflichtfelder einer Adresse und haengt fehlende an die Hinweise an. */
-function pruefeAdresse(
-  adresse: JsonValue | undefined,
-  pfad: string,
-  felder: string[],
-  hinweise: string[],
-): void {
-  if (!istObjekt(adresse)) {
-    hinweise.push(`${pfad} fehlt`);
-    return;
-  }
-  for (const feld of felder) {
-    if (istLeer(adresse[feld])) hinweise.push(`${pfad}.${feld} fehlt`);
-  }
+/** Eine Adresse, wie sie das Schema in app/services/lieferschein_extractor/schema.rb definiert. */
+export interface Adresse {
+  name: string | null;
+  strasse: string | null;
+  plz: string | null;
+  ort: string | null;
+  land: string | null;
+}
+
+export interface Position {
+  position: number | null;
+  artikelnummer: string | null;
+  bezeichnung: string;
+  menge: number | null;
+  einheit: string | null;
+}
+
+/** Ein erkannter Lieferschein - genau die Felder des Backend-Schemas. */
+export interface Lieferschein {
+  kunde: { name: string | null; kundennummer: string | null; adresse: Adresse };
+  lieferadresse: Adresse;
+  lieferdatum: string | null;
+  lieferschein_nummer: string | null;
+  bestellnummer: string | null;
+  positionen: Position[];
+  warnungen: string[];
+}
+
+function alsText(wert: JsonValue | undefined): string | null {
+  if (typeof wert === 'string') return wert;
+  if (typeof wert === 'number') return String(wert);
+  return null;
+}
+
+function alsZahl(wert: JsonValue | undefined): number | null {
+  if (typeof wert === 'number') return wert;
+  if (typeof wert === 'string' && wert.trim() !== '' && !isNaN(Number(wert))) return Number(wert);
+  return null;
+}
+
+function alsAdresse(wert: JsonValue | undefined): Adresse {
+  const a = istObjekt(wert) ? wert : {};
+  return {
+    name: alsText(a['name']),
+    strasse: alsText(a['strasse']),
+    plz: alsText(a['plz']),
+    ort: alsText(a['ort']),
+    land: alsText(a['land']),
+  };
+}
+
+/**
+ * Bringt das KI-Resultat in die feste Form, die das Formular bearbeitet.
+ * Fehlende Teile werden mit null bzw. leeren Listen aufgefuellt, damit das
+ * Formular nie an einem undefined haengen bleibt.
+ */
+export function normalisiere(daten: JsonValue): Lieferschein {
+  const d = istObjekt(daten) ? daten : {};
+  const kunde = istObjekt(d['kunde']) ? d['kunde'] : {};
+  const positionen = Array.isArray(d['positionen']) ? d['positionen'] : [];
+  const warnungen = Array.isArray(d['warnungen']) ? d['warnungen'] : [];
+  return {
+    kunde: {
+      name: alsText(kunde['name']),
+      kundennummer: alsText(kunde['kundennummer']),
+      adresse: alsAdresse(kunde['adresse']),
+    },
+    lieferadresse: alsAdresse(d['lieferadresse']),
+    lieferdatum: alsText(d['lieferdatum']),
+    lieferschein_nummer: alsText(d['lieferschein_nummer']),
+    bestellnummer: alsText(d['bestellnummer']),
+    positionen: positionen.map((p) => {
+      const pos = istObjekt(p) ? p : {};
+      return {
+        position: alsZahl(pos['position']),
+        artikelnummer: alsText(pos['artikelnummer']),
+        bezeichnung: alsText(pos['bezeichnung']) ?? '',
+        menge: alsZahl(pos['menge']),
+        einheit: alsText(pos['einheit']),
+      };
+    }),
+    warnungen: warnungen.filter((w): w is string => typeof w === 'string' && w.trim() !== ''),
+  };
+}
+
+/** Bereiche in der Reihenfolge, in der die Vorschau die Fehler auflistet. */
+export const BEREICHE = ['Kunde', 'Lieferadresse', 'Lieferdatum', 'Artikel'] as const;
+export type Bereich = (typeof BEREICHE)[number];
+
+/** Ein fehlender oder fehlerhafter Wert, in Worten fuer die Mitarbeiterin. */
+export interface Hinweis {
+  /** Welches Formularfeld betroffen ist, z.B. "kunde.name" oder "positionen.1.menge". */
+  feld: string;
+  bereich: Bereich;
+  text: string;
+}
+
+/** Anzeigenamen der Adressfelder. */
+export const ADRESSFELDER: Record<keyof Adresse, string> = {
+  name: 'Name',
+  strasse: 'Strasse',
+  plz: 'PLZ',
+  ort: 'Ort',
+  land: 'Land',
+};
+
+function leer(wert: string | null): boolean {
+  return wert === null || wert.trim() === '';
 }
 
 /** true, wenn der Text ein echtes Kalenderdatum im Format YYYY-MM-DD ist. */
@@ -97,65 +187,72 @@ function istGueltigesDatum(text: string): boolean {
 }
 
 /**
- * Sucht im (evtl. von Hand bearbeiteten) Lieferschein-JSON nach fehlenden oder
- * fehlerhaften Angaben. Die Felder entsprechen dem Schema in
- * app/services/lieferschein_extractor/schema.rb. Gibt eine Liste lesbarer
- * Hinweise zurueck, leer heisst: alle Pflichtangaben vorhanden.
+ * Sucht fehlende oder fehlerhafte Pflichtangaben. Die Warnungen der KI zaehlen
+ * bewusst nicht dazu - sie sind Vermutungen und werden getrennt angezeigt.
+ * Leere Liste heisst: alle Pflichtangaben vorhanden.
  */
-export function pruefeLieferschein(daten: JsonValue): string[] {
-  if (!istObjekt(daten)) return ['Das JSON muss ein Objekt sein.'];
+export function pruefeLieferschein(daten: Lieferschein): Hinweis[] {
+  const hinweise: Hinweis[] = [];
 
-  const hinweise: string[] = [];
-
-  const kunde = daten['kunde'];
-  if (!istObjekt(kunde)) {
-    hinweise.push('kunde fehlt');
-  } else {
-    if (istLeer(kunde['name'])) hinweise.push('kunde.name fehlt');
-    pruefeAdresse(kunde['adresse'], 'kunde.adresse', ['strasse', 'plz', 'ort'], hinweise);
+  if (leer(daten.kunde.name)) {
+    hinweise.push({ feld: 'kunde.name', bereich: 'Kunde', text: 'Name fehlt' });
   }
-
-  pruefeAdresse(
-    daten['lieferadresse'],
-    'lieferadresse',
-    ['name', 'strasse', 'plz', 'ort'],
-    hinweise,
-  );
-
-  const lieferdatum = daten['lieferdatum'];
-  if (istLeer(lieferdatum)) {
-    hinweise.push('lieferdatum fehlt');
-  } else if (typeof lieferdatum !== 'string' || !istGueltigesDatum(lieferdatum)) {
-    hinweise.push('lieferdatum ist kein gültiges Datum (YYYY-MM-DD)');
-  }
-
-  const positionen = daten['positionen'];
-  if (!Array.isArray(positionen) || positionen.length === 0) {
-    hinweise.push('positionen: keine Artikel erkannt');
-  } else {
-    positionen.forEach((position, i) => {
-      const pfad = `positionen[${i}]`;
-      if (!istObjekt(position)) {
-        hinweise.push(`${pfad} ist kein Objekt`);
-        return;
-      }
-      if (istLeer(position['bezeichnung'])) hinweise.push(`${pfad}.bezeichnung fehlt`);
-      const menge = position['menge'];
-      if (istLeer(menge)) {
-        hinweise.push(`${pfad}.menge fehlt`);
-      } else if (typeof menge !== 'number' || menge <= 0) {
-        hinweise.push(`${pfad}.menge muss eine Zahl grösser 0 sein`);
-      }
-    });
-  }
-
-  // Unsicherheiten, die die KI selbst gemeldet hat.
-  const warnungen = daten['warnungen'];
-  if (Array.isArray(warnungen)) {
-    for (const warnung of warnungen) {
-      if (typeof warnung === 'string' && warnung.trim()) hinweise.push(`KI-Warnung: ${warnung}`);
+  for (const feld of ['strasse', 'plz', 'ort'] as const) {
+    if (leer(daten.kunde.adresse[feld])) {
+      const text = `${ADRESSFELDER[feld]} fehlt`;
+      hinweise.push({ feld: `kunde.adresse.${feld}`, bereich: 'Kunde', text });
     }
   }
 
+  for (const feld of ['name', 'strasse', 'plz', 'ort'] as const) {
+    if (leer(daten.lieferadresse[feld])) {
+      const text = `${ADRESSFELDER[feld]} fehlt`;
+      hinweise.push({ feld: `lieferadresse.${feld}`, bereich: 'Lieferadresse', text });
+    }
+  }
+
+  const lieferdatum = daten.lieferdatum;
+  if (lieferdatum === null || leer(lieferdatum)) {
+    hinweise.push({ feld: 'lieferdatum', bereich: 'Lieferdatum', text: 'Lieferdatum fehlt' });
+  } else if (!istGueltigesDatum(lieferdatum)) {
+    hinweise.push({
+      feld: 'lieferdatum',
+      bereich: 'Lieferdatum',
+      text: `„${lieferdatum}“ ist kein gültiges Datum`,
+    });
+  }
+
+  if (daten.positionen.length === 0) {
+    hinweise.push({ feld: 'positionen', bereich: 'Artikel', text: 'Keine Artikel erkannt' });
+  }
+  daten.positionen.forEach((position, i) => {
+    // Nummer wie auf dem Lieferschein; ohne erkannte Nummer ab 1 gezaehlt.
+    const nummer = `Position ${position.position ?? i + 1}`;
+    const titel = leer(position.bezeichnung)
+      ? nummer
+      : `${nummer} (${position.bezeichnung.trim()})`;
+    if (leer(position.bezeichnung)) {
+      const text = `${nummer}: Bezeichnung fehlt`;
+      hinweise.push({ feld: `positionen.${i}.bezeichnung`, bereich: 'Artikel', text });
+    }
+    if (position.menge === null) {
+      const text = `${titel}: Menge fehlt`;
+      hinweise.push({ feld: `positionen.${i}.menge`, bereich: 'Artikel', text });
+    } else if (position.menge <= 0) {
+      const text = `${titel}: Menge muss grösser 0 sein`;
+      hinweise.push({ feld: `positionen.${i}.menge`, bereich: 'Artikel', text });
+    }
+  });
+
   return hinweise;
+}
+
+/** Fasst Hinweise nach Bereich zusammen, in der festen Reihenfolge von BEREICHE. */
+export function gruppiereHinweise(
+  hinweise: Hinweis[],
+): { bereich: Bereich; hinweise: Hinweis[] }[] {
+  return BEREICHE.map((bereich) => ({
+    bereich,
+    hinweise: hinweise.filter((h) => h.bereich === bereich),
+  })).filter((gruppe) => gruppe.hinweise.length > 0);
 }

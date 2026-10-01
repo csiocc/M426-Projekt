@@ -47,15 +47,49 @@ const pngDatei = () => new File(['x'], 'lieferschein.png', { type: 'image/png' }
 const pdfDatei = () => new File(['x'], 'lieferschein.pdf', { type: 'application/pdf' });
 const textVon = (fixture: ComponentFixture<Upload>) =>
   (fixture.nativeElement as HTMLElement).textContent ?? '';
-const editorVon = (fixture: ComponentFixture<Upload>) =>
+
+/** Formularfeld ueber seinen Pfad, z.B. "kunde.name" oder "positionen.1.menge". */
+const feld = (fixture: ComponentFixture<Upload>, pfad: string) =>
+  (fixture.nativeElement as HTMLElement).querySelector(
+    `[id="feld-${pfad}"]`,
+  ) as HTMLInputElement | null;
+
+/** Tippt einen Wert in ein Formularfeld, wie es die Nutzerin taete. */
+async function eintippen(
+  fixture: ComponentFixture<Upload>,
+  pfad: string,
+  wert: string,
+): Promise<void> {
+  const eingabe = feld(fixture, pfad)!;
+  eingabe.value = wert;
+  eingabe.dispatchEvent(new Event('input'));
+  await fixture.whenStable();
+}
+
+const jsonFeld = (fixture: ComponentFixture<Upload>) =>
   (fixture.nativeElement as HTMLElement).querySelector('textarea') as HTMLTextAreaElement;
 
-/** Tippt einen neuen Inhalt in den JSON-Editor, wie es die Nutzerin taete. */
-async function eintippen(fixture: ComponentFixture<Upload>, text: string): Promise<void> {
-  const editor = editorVon(fixture);
-  editor.value = text;
-  editor.dispatchEvent(new Event('input'));
+async function zumJson(fixture: ComponentFixture<Upload>): Promise<void> {
+  knopf(fixture, 'JSON').click();
   await fixture.whenStable();
+}
+
+/** Ersetzt den ganzen Inhalt des JSON-Felds, wie beim Tippen. */
+async function jsonTippen(fixture: ComponentFixture<Upload>, text: string): Promise<void> {
+  const eingabe = jsonFeld(fixture);
+  eingabe.value = text;
+  eingabe.dispatchEvent(new Event('input'));
+  await fixture.whenStable();
+}
+
+/** Knopf ueber seine Beschriftung oder sein aria-label. */
+function knopf(fixture: ComponentFixture<Upload>, beschriftung: string): HTMLButtonElement {
+  const knoepfe = Array.from(
+    (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+  ) as HTMLButtonElement[];
+  return knoepfe.find(
+    (k) => k.textContent?.includes(beschriftung) || k.getAttribute('aria-label') === beschriftung,
+  )!;
 }
 
 /** Ein Lieferschein, bei dem alle Pflichtangaben vorhanden sind. */
@@ -71,9 +105,24 @@ const vollstaendig = (): { [key: string]: JsonValue } => ({
     ort: 'Dübendorf',
   },
   lieferdatum: '2026-09-10',
-  positionen: [{ bezeichnung: 'Schrauben 4x30', menge: 250 }],
+  lieferschein_nummer: 'LS-2026-0042',
+  positionen: [
+    { position: 1, bezeichnung: 'Schrauben 4x30', menge: 250 },
+    { position: 2, bezeichnung: 'Dübel S8', menge: 10 },
+  ],
   warnungen: [],
 });
+
+/** Laedt eine Datei hoch und wartet, bis das Ergebnis angezeigt wird. */
+async function mitErgebnis(
+  ergebnis: JsonValue,
+  datei: File = pdfDatei(),
+): Promise<ComponentFixture<Upload>> {
+  const fixture = await setup(new StubService(of(1), of(ergebnis)));
+  ausloesen(fixture, datei);
+  await fixture.whenStable();
+  return fixture;
+}
 
 describe('Upload', () => {
   // jsdom kennt keine Object-URLs - die Komponente braucht sie fuer die Dateivorschau.
@@ -94,34 +143,89 @@ describe('Upload', () => {
     expect(text).toContain('20.0 MB');
   });
 
-  it('zeigt das JSON-Ergebnis samt Dateiname an', async () => {
-    const fixture = await setup(
-      new StubService(of(1), of({ lieferschein_nummer: 'LS-2026-0042', positionen: [] })),
-    );
-    ausloesen(fixture, pngDatei());
-    await fixture.whenStable();
+  it('zeigt die erkannten Daten im Formular samt Dateiname an', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
 
-    expect(textVon(fixture)).toContain('lieferschein.png');
-    const json = editorVon(fixture).value;
-    expect(json).toContain('"lieferschein_nummer": "LS-2026-0042"');
+    expect(textVon(fixture)).toContain('lieferschein.pdf');
+    expect(feld(fixture, 'kunde.name')?.value).toBe('Muster AG');
+    expect(feld(fixture, 'lieferadresse.ort')?.value).toBe('Dübendorf');
+    expect(feld(fixture, 'lieferdatum')?.value).toBe('2026-09-10');
+    expect(feld(fixture, 'positionen.1.bezeichnung')?.value).toBe('Dübel S8');
+    expect(feld(fixture, 'positionen.1.menge')?.value).toBe('10');
   });
 
-  it('zeigt ein hochgeladenes PDF links im iframe an', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pdfDatei());
+  it('zeigt im JSON-Tab, was exportiert wird - inklusive Korrekturen', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+    await eintippen(fixture, 'kunde.name', 'Beispiel GmbH');
+
+    await zumJson(fixture);
+
+    const json = jsonFeld(fixture).value;
+    expect(json).toContain('"lieferschein_nummer": "LS-2026-0042"');
+    expect(json).toContain('"name": "Beispiel GmbH"');
+  });
+
+  it('uebernimmt Aenderungen im JSON sofort ins Formular', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+    await zumJson(fixture);
+
+    const daten = JSON.parse(jsonFeld(fixture).value) as {
+      kunde: { name: string | null };
+      lieferdatum: string | null;
+    };
+    daten.kunde.name = 'Aus JSON AG';
+    daten.lieferdatum = null;
+    await jsonTippen(fixture, JSON.stringify(daten, null, 2));
+
+    // Pruefung laeuft mit: das geloeschte Datum zaehlt sofort als Fehler.
+    expect(textVon(fixture)).toContain('1 Fehler');
+
+    knopf(fixture, 'Formular').click();
     await fixture.whenStable();
+    expect(feld(fixture, 'kunde.name')?.value).toBe('Aus JSON AG');
+    expect(feld(fixture, 'lieferdatum')?.classList).toContain('feld-fehler');
+  });
+
+  it('meldet ungueltiges JSON und behaelt im Formular den letzten gueltigen Stand', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+    await zumJson(fixture);
+
+    await jsonTippen(fixture, '{ "kunde": ');
+
+    expect(textVon(fixture)).toContain('Ungültiges JSON');
+    // Der Entwurf bleibt stehen, damit man ihn reparieren kann.
+    expect(jsonFeld(fixture).value).toBe('{ "kunde": ');
+
+    knopf(fixture, 'Formular').click();
+    await fixture.whenStable();
+    expect(feld(fixture, 'kunde.name')?.value).toBe('Muster AG');
+  });
+
+  it('setzt auch JSON-Aenderungen mit "wiederherstellen" zurueck', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+    await zumJson(fixture);
+    await jsonTippen(fixture, '{}');
+    expect(textVon(fixture)).not.toContain('Vollständig');
+
+    knopf(fixture, 'Erkannte Daten wiederherstellen').click();
+    await fixture.whenStable();
+
+    expect(jsonFeld(fixture).value).toContain('"name": "Muster AG"');
+    expect(textVon(fixture)).toContain('Vollständig');
+  });
+
+  it('zeigt ein PDF links im iframe, ohne Seitenleiste', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
 
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('iframe')?.getAttribute('src')).toBe(
-      'blob:http://localhost/vorschau',
+      'blob:http://localhost/vorschau#navpanes=0&view=FitH',
     );
     expect(element.querySelector('img[alt="lieferschein.pdf"]')).toBeNull();
   });
 
-  it('zeigt ein hochgeladenes Bild links als img an', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pngDatei());
-    await fixture.whenStable();
+  it('zeigt ein Bild links als img an', async () => {
+    const fixture = await mitErgebnis(vollstaendig(), pngDatei());
 
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('img[alt="lieferschein.png"]')?.getAttribute('src')).toBe(
@@ -131,58 +235,151 @@ describe('Upload', () => {
   });
 
   it('meldet bei vollstaendigen Daten keine Fehler', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pdfDatei());
-    await fixture.whenStable();
-
-    expect(textVon(fixture)).toContain('Alle Pflichtangaben vorhanden.');
-  });
-
-  it('zeigt fehlende Angaben nach einer Bearbeitung an', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pdfDatei());
-    await fixture.whenStable();
-
-    const daten = vollstaendig();
-    (daten['kunde'] as { [key: string]: JsonValue })['name'] = null;
-    await eintippen(fixture, JSON.stringify(daten));
+    const fixture = await mitErgebnis(vollstaendig());
 
     const text = textVon(fixture);
-    expect(text).toContain('Fehlende oder fehlerhafte Angaben (1)');
-    expect(text).toContain('kunde.name fehlt');
+    expect(text).toContain('Vollständig');
+    expect(text).not.toContain('Fehlende oder fehlerhafte Angaben');
   });
 
-  it('meldet ungueltiges JSON im Editor', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pdfDatei());
+  it('markiert fehlende Angaben direkt im Formular', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+
+    await eintippen(fixture, 'kunde.name', '');
+    await eintippen(fixture, 'positionen.1.menge', '');
+
+    const text = textVon(fixture);
+    expect(text).toContain('2 Fehler');
+    expect(text).toContain('Name fehlt');
+    expect(feld(fixture, 'positionen.1.menge')?.title).toBe('Position 2 (Dübel S8): Menge fehlt');
+
+    knopf(fixture, 'Fehlende oder fehlerhafte Angaben').click();
     await fixture.whenStable();
+    expect(textVon(fixture)).toContain('Position 2 (Dübel S8): Menge fehlt');
+  });
 
-    await eintippen(fixture, '{ "kunde": ');
+  it('zeigt Hinweise der KI getrennt und zaehlt sie nicht als Fehler', async () => {
+    const fixture = await mitErgebnis({
+      ...vollstaendig(),
+      warnungen: ['Lieferdatum unscharf', 'Menge Position 2 geschätzt'],
+    });
 
-    expect(textVon(fixture)).toContain('Ungültiges JSON');
+    const text = textVon(fixture);
+    expect(text).toContain('Vollständig');
+    expect(text).toContain('2 KI-Hinweise');
+    expect(text).toContain('Hinweise der KI (2)');
+    // Nur Zusatzinfo - darum standardmaessig zugeklappt.
+    expect(text).not.toContain('Menge Position 2 geschätzt');
+
+    knopf(fixture, 'Hinweise der KI').click();
+    await fixture.whenStable();
+    expect(textVon(fixture)).toContain('Menge Position 2 geschätzt');
+  });
+
+  it('zeigt die Fehlerliste erst auf Klick, die Felder sind sofort markiert', async () => {
+    const fixture = await mitErgebnis({ ...vollstaendig(), lieferdatum: null });
+    const box = () => knopf(fixture, 'Fehlende oder fehlerhafte Angaben').parentElement!;
+
+    // Zugeklappt: der Text steht nur unter dem Datumsfeld selbst.
+    expect(box().textContent).not.toContain('Lieferdatum fehlt');
+    expect(textVon(fixture)).toContain('Lieferdatum fehlt');
+
+    knopf(fixture, 'Fehlende oder fehlerhafte Angaben').click();
+    await fixture.whenStable();
+    expect(box().textContent).toContain('Lieferdatum fehlt');
+  });
+
+  it('markiert alle fehlerhaften Felder gleich, auch das Datum', async () => {
+    const fixture = await mitErgebnis({ ...vollstaendig(), lieferdatum: null });
+    await eintippen(fixture, 'positionen.0.menge', '');
+
+    expect(feld(fixture, 'lieferdatum')?.classList).toContain('feld-fehler');
+    expect(feld(fixture, 'positionen.0.menge')?.classList).toContain('feld-fehler');
+    expect(feld(fixture, 'kunde.name')?.classList).not.toContain('feld-fehler');
+  });
+
+  it('zeigt die Positionsnummer nur an, statt sie bearbeitbar zu machen', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+
+    const ersteZelle = (fixture.nativeElement as HTMLElement).querySelector('tbody tr td')!;
+    expect(ersteZelle.textContent?.trim()).toBe('1');
+    expect(ersteZelle.querySelector('input')).toBeNull();
+  });
+
+  it('zeigt fuer jede erkannte Position eine eigene Zeile - egal wie viele', async () => {
+    const zeilen = (fixture: ComponentFixture<Upload>) =>
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr').length;
+    const mitPositionen = (anzahl: number) =>
+      mitErgebnis({
+        ...vollstaendig(),
+        positionen: Array.from({ length: anzahl }, (_, i) => ({
+          position: i + 1,
+          bezeichnung: `Artikel ${i + 1}`,
+          menge: 1,
+        })),
+      });
+
+    const eine = await mitPositionen(1);
+    expect(zeilen(eine)).toBe(1);
+    expect(feld(eine, 'positionen.0.bezeichnung')?.value).toBe('Artikel 1');
+    expect(textVon(eine)).toContain('Vollständig');
+    TestBed.resetTestingModule();
+
+    const viele = await mitPositionen(40);
+    expect(zeilen(viele)).toBe(40);
+    expect(feld(viele, 'positionen.39.bezeichnung')?.value).toBe('Artikel 40');
+    TestBed.resetTestingModule();
+
+    // Keine Position erkannt: Hinweis plus Knopf, um selbst eine anzulegen.
+    const keine = await mitPositionen(0);
+    expect(zeilen(keine)).toBe(0);
+    expect(textVon(keine)).toContain('Keine Artikel erkannt');
+    expect(feld(keine, 'positionen')).not.toBeNull();
+  });
+
+  it('fuegt Positionen hinzu und entfernt sie', async () => {
+    const fixture = await mitErgebnis(vollstaendig());
+
+    feld(fixture, 'positionen')!.click();
+    await fixture.whenStable();
+    // Die neue, leere Zeile ist sofort als unvollstaendig markiert.
+    expect(feld(fixture, 'positionen.2.bezeichnung')?.classList).toContain('feld-fehler');
+    expect(textVon(fixture)).toContain('2 Fehler');
+
+    knopf(fixture, 'Position 3 entfernen').click();
+    await fixture.whenStable();
+    expect(feld(fixture, 'positionen.2.bezeichnung')).toBeNull();
+    expect(textVon(fixture)).toContain('Vollständig');
   });
 
   it('stellt die erkannten Daten nach einer Bearbeitung wieder her', async () => {
-    const fixture = await setup(new StubService(of(1), of(vollstaendig())));
-    ausloesen(fixture, pdfDatei());
-    await fixture.whenStable();
-    const original = editorVon(fixture).value;
+    const fixture = await mitErgebnis(vollstaendig());
 
-    await eintippen(fixture, '{}');
-    (fixture.componentInstance as unknown as { wiederherstellen: () => void }).wiederherstellen();
+    await eintippen(fixture, 'kunde.name', '');
+    knopf(fixture, 'Erkannte Daten wiederherstellen').click();
     await fixture.whenStable();
 
-    expect(editorVon(fixture).value).toBe(original);
-    expect(textVon(fixture)).toContain('Alle Pflichtangaben vorhanden.');
+    expect(feld(fixture, 'kunde.name')?.value).toBe('Muster AG');
+    expect(textVon(fixture)).toContain('Vollständig');
   });
 
   it('zeigt eine Fehlerantwort des Jobs als Fehler statt als Ergebnis', async () => {
-    const fixture = await setup(new StubService(of(1), of({ fehler: 'KI nicht erreichbar' })));
-    ausloesen(fixture, pdfDatei());
-    await fixture.whenStable();
+    const fixture = await mitErgebnis({ fehler: 'KI nicht erreichbar' });
 
-    expect(textVon(fixture)).toContain('KI nicht erreichbar');
-    expect(editorVon(fixture)).toBeNull();
+    const text = textVon(fixture);
+    expect(text).toContain('Die KI konnte den Lieferschein nicht auslesen.');
+    expect(text).toContain('KI nicht erreichbar');
+    expect(feld(fixture, 'kunde.name')).toBeNull();
+  });
+
+  it('kuerzt sehr lange Fehlermeldungen der API', async () => {
+    const body = `{"error":{"message":"${'x'.repeat(1000)}"}}`;
+    const fixture = await mitErgebnis({ fehler: `OpenAI-API HTTP 401: ${body}` });
+
+    const text = textVon(fixture);
+    expect(text).toContain('OpenAI-API HTTP 401');
+    expect(text).toContain('…');
+    expect(text).not.toContain('x'.repeat(400));
   });
 
   it('gibt die Object-URL beim Entfernen wieder frei', async () => {

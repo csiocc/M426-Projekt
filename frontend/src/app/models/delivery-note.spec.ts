@@ -1,8 +1,10 @@
 import {
-  JsonValue,
+  Lieferschein,
   MAX_FILE_SIZE_BYTES,
   fehlerAusAntwort,
   formatBytes,
+  gruppiereHinweise,
+  normalisiere,
   pruefeLieferschein,
   validateFile,
 } from './delivery-note';
@@ -51,8 +53,8 @@ describe('formatBytes', () => {
 });
 
 /** Vollstaendiger Lieferschein nach docs/ki/beispiele/lieferschein-01.erwartet.json. */
-function beispiel(): { [key: string]: JsonValue } {
-  return {
+function beispiel(): Lieferschein {
+  return normalisiere({
     kunde: {
       name: 'Muster AG',
       kundennummer: 'K-1024',
@@ -76,82 +78,139 @@ function beispiel(): { [key: string]: JsonValue } {
         menge: 250,
         einheit: 'Stk',
       },
-      {
-        position: 2,
-        artikelnummer: null,
-        bezeichnung: 'Palette (Leergut)',
-        menge: 1,
-        einheit: 'Palette',
-      },
+      { position: 2, artikelnummer: null, bezeichnung: 'Dübel S8', menge: 1, einheit: 'Stk' },
     ],
     warnungen: [],
-  };
+  });
 }
+
+/** Hinweise als "Bereich: Text", damit die Erwartungen kurz und lesbar bleiben. */
+const texte = (daten: Lieferschein) =>
+  pruefeLieferschein(daten).map((h) => `${h.bereich}: ${h.text}`);
+
+describe('normalisiere', () => {
+  it('uebernimmt ein vollstaendiges Resultat unveraendert', () => {
+    const daten = beispiel();
+    expect(daten.kunde.name).toBe('Muster AG');
+    expect(daten.positionen).toHaveLength(2);
+    expect(daten.positionen[0].menge).toBe(250);
+  });
+
+  it('fuellt fehlende Teile auf, statt abzustuerzen', () => {
+    const daten = normalisiere({ positionen: [{ bezeichnung: 'Dübel', menge: '5' }, 'kaputt'] });
+    expect(daten.kunde).toEqual({
+      name: null,
+      kundennummer: null,
+      adresse: { name: null, strasse: null, plz: null, ort: null, land: null },
+    });
+    expect(daten.lieferdatum).toBeNull();
+    // "5" als Text wird zur Zahl, ein kaputter Eintrag zur leeren Position.
+    expect(daten.positionen[0].menge).toBe(5);
+    expect(daten.positionen[1]).toEqual({
+      position: null,
+      artikelnummer: null,
+      bezeichnung: '',
+      menge: null,
+      einheit: null,
+    });
+    expect(normalisiere([1, 2]).positionen).toEqual([]);
+  });
+
+  it('behaelt nur echte Warnungen der KI', () => {
+    expect(normalisiere({ warnungen: ['Datum unscharf', '', 3] }).warnungen).toEqual([
+      'Datum unscharf',
+    ]);
+  });
+});
 
 describe('pruefeLieferschein', () => {
   it('meldet bei einem vollstaendigen Lieferschein nichts', () => {
     expect(pruefeLieferschein(beispiel())).toEqual([]);
   });
 
-  it('meldet fehlenden Kundennamen und leere Adressfelder', () => {
+  it('meldet fehlenden Kundennamen und leere Adressfelder mit Feldangabe', () => {
     const daten = beispiel();
-    const kunde = daten['kunde'] as { [key: string]: JsonValue };
-    kunde['name'] = null;
-    (kunde['adresse'] as { [key: string]: JsonValue })['ort'] = '  ';
-    expect(pruefeLieferschein(daten)).toEqual(['kunde.name fehlt', 'kunde.adresse.ort fehlt']);
+    daten.kunde.name = null;
+    daten.kunde.adresse.ort = '  ';
+    expect(pruefeLieferschein(daten)).toEqual([
+      { feld: 'kunde.name', bereich: 'Kunde', text: 'Name fehlt' },
+      { feld: 'kunde.adresse.ort', bereich: 'Kunde', text: 'Ort fehlt' },
+    ]);
   });
 
-  it('meldet eine fehlende Lieferadresse', () => {
+  it('meldet fehlende Felder der Lieferadresse', () => {
     const daten = beispiel();
-    daten['lieferadresse'] = null;
-    expect(pruefeLieferschein(daten)).toEqual(['lieferadresse fehlt']);
+    daten.lieferadresse.plz = null;
+    daten.lieferadresse.name = '';
+    expect(texte(daten)).toEqual(['Lieferadresse: Name fehlt', 'Lieferadresse: PLZ fehlt']);
   });
 
   it('meldet fehlendes und ungueltiges Lieferdatum', () => {
     const daten = beispiel();
-    daten['lieferdatum'] = null;
-    expect(pruefeLieferschein(daten)).toEqual(['lieferdatum fehlt']);
+    daten.lieferdatum = null;
+    expect(texte(daten)).toEqual(['Lieferdatum: Lieferdatum fehlt']);
 
-    daten['lieferdatum'] = '10.09.2026';
-    expect(pruefeLieferschein(daten)[0]).toContain('kein gültiges Datum');
+    daten.lieferdatum = '10.09.2026';
+    expect(texte(daten)).toEqual(['Lieferdatum: „10.09.2026“ ist kein gültiges Datum']);
 
     // Formal korrekt, aber diesen Tag gibt es nicht.
-    daten['lieferdatum'] = '2026-02-30';
-    expect(pruefeLieferschein(daten)[0]).toContain('kein gültiges Datum');
+    daten.lieferdatum = '2026-02-30';
+    expect(texte(daten)[0]).toContain('kein gültiges Datum');
   });
 
   it('meldet, wenn keine Artikel erkannt wurden', () => {
     const daten = beispiel();
-    daten['positionen'] = [];
-    expect(pruefeLieferschein(daten)).toEqual(['positionen: keine Artikel erkannt']);
-  });
-
-  it('meldet fehlende Bezeichnung und fehlerhafte Mengen pro Position', () => {
-    const daten = beispiel();
-    daten['positionen'] = [
-      { bezeichnung: '', menge: null },
-      { bezeichnung: 'Dübel', menge: '5' },
-      { bezeichnung: 'Matte', menge: 0 },
-      'kaputt',
-    ];
+    daten.positionen = [];
     expect(pruefeLieferschein(daten)).toEqual([
-      'positionen[0].bezeichnung fehlt',
-      'positionen[0].menge fehlt',
-      'positionen[1].menge muss eine Zahl grösser 0 sein',
-      'positionen[2].menge muss eine Zahl grösser 0 sein',
-      'positionen[3] ist kein Objekt',
+      { feld: 'positionen', bereich: 'Artikel', text: 'Keine Artikel erkannt' },
     ]);
   });
 
-  it('uebernimmt die Warnungen der KI', () => {
+  it('nennt Positionen mit Nummer und Bezeichnung statt als JSON-Pfad', () => {
     const daten = beispiel();
-    daten['warnungen'] = ['Menge in Zeile 2 schlecht lesbar'];
-    expect(pruefeLieferschein(daten)).toEqual(['KI-Warnung: Menge in Zeile 2 schlecht lesbar']);
+    daten.positionen[1].menge = null;
+    daten.positionen.push({
+      position: null,
+      artikelnummer: null,
+      bezeichnung: '',
+      menge: 0,
+      einheit: null,
+    });
+    expect(pruefeLieferschein(daten)).toEqual([
+      {
+        feld: 'positionen.1.menge',
+        bereich: 'Artikel',
+        text: 'Position 2 (Dübel S8): Menge fehlt',
+      },
+      {
+        feld: 'positionen.2.bezeichnung',
+        bereich: 'Artikel',
+        text: 'Position 3: Bezeichnung fehlt',
+      },
+      {
+        feld: 'positionen.2.menge',
+        bereich: 'Artikel',
+        text: 'Position 3: Menge muss grösser 0 sein',
+      },
+    ]);
   });
 
-  it('meldet, wenn das JSON kein Objekt ist', () => {
-    expect(pruefeLieferschein([1, 2])).toEqual(['Das JSON muss ein Objekt sein.']);
-    expect(pruefeLieferschein({})).toContain('kunde fehlt');
+  it('zaehlt die Warnungen der KI nicht als Fehler', () => {
+    const daten = beispiel();
+    daten.warnungen = ['Menge in Zeile 2 schlecht lesbar'];
+    expect(pruefeLieferschein(daten)).toEqual([]);
+  });
+});
+
+describe('gruppiereHinweise', () => {
+  it('fasst nach Bereich zusammen, in fester Reihenfolge und ohne leere Gruppen', () => {
+    const name = { feld: 'kunde.name', bereich: 'Kunde', text: 'Name fehlt' } as const;
+    const menge1 = { feld: 'positionen.0.menge', bereich: 'Artikel', text: 'a' } as const;
+    const menge2 = { feld: 'positionen.1.menge', bereich: 'Artikel', text: 'b' } as const;
+    expect(gruppiereHinweise([menge1, name, menge2])).toEqual([
+      { bereich: 'Kunde', hinweise: [name] },
+      { bereich: 'Artikel', hinweise: [menge1, menge2] },
+    ]);
   });
 });
 
@@ -161,7 +220,7 @@ describe('fehlerAusAntwort', () => {
   });
 
   it('gibt fuer ein normales Ergebnis null zurueck', () => {
-    expect(fehlerAusAntwort(beispiel())).toBeNull();
+    expect(fehlerAusAntwort({ kunde: null })).toBeNull();
     expect(fehlerAusAntwort(null)).toBeNull();
   });
 });
