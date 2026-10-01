@@ -28,14 +28,14 @@ class LieferscheinExtractor
   class AttachmentError < Error; end
 
   # Vision-faehiges Modell mit Unterstuetzung fuer Structured Outputs.
-  # Per ENV uebersteuerbar (z. B. "gpt-4o-mini" fuer guenstigere Tests).
-  MODEL = ENV.fetch("OPENAI_MODEL", "gpt-4o-2024-08-06")
+  # Per ENV uebersteuerbar (z. B. "gpt-6-luna" fuer guenstigere Tests).
+  MODEL = ENV.fetch("OPENAI_MODEL", "gpt-6-luna")
   ENDPOINT = URI("https://api.openai.com/v1/responses")
 
   # Sicherheitsnetz gegen zu grosse / teure Antworten. Alle per ENV
   # uebersteuerbar, da die passenden Werte vom Dokumentumfang abhaengen
   # (siehe Review: "token limit / timeouts evtl. zu knapp, muessen wir testen").
-  MAX_OUTPUT_TOKENS = ENV.fetch("OPENAI_MAX_OUTPUT_TOKENS", "8000").to_i
+  MAX_OUTPUT_TOKENS = ENV.fetch("OPENAI_MAX_OUTPUT_TOKENS", "32000").to_i
   OPEN_TIMEOUT = ENV.fetch("OPENAI_OPEN_TIMEOUT", "15").to_i
   READ_TIMEOUT = ENV.fetch("OPENAI_READ_TIMEOUT", "180").to_i
 
