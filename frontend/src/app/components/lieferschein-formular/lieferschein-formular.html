@@ -1,0 +1,218 @@
+@let d = daten();
+@let f = fehler();
+
+<form class="space-y-6 p-4 text-sm" (submit)="$event.preventDefault()">
+  <fieldset>
+    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Kunde</legend>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <app-formular-feld label="Name" [fehler]="f.get('kunde.name')">
+        <input
+          pInputText
+          pSize="small"
+          id="feld-kunde.name"
+          [value]="d.kunde.name ?? ''"
+          [invalid]="f.has('kunde.name')"
+          [class.feld-fehler]="f.has('kunde.name')"
+          (input)="setzeKunde('name', $event)"
+        />
+      </app-formular-feld>
+      <app-formular-feld label="Kundennummer">
+        <input
+          pInputText
+          pSize="small"
+          [value]="d.kunde.kundennummer ?? ''"
+          (input)="setzeKunde('kundennummer', $event)"
+        />
+      </app-formular-feld>
+      @for (feld of kundenAdressfelder; track feld) {
+        @let pfad = 'kunde.adresse.' + feld;
+        <app-formular-feld [label]="adressfelder[feld]" [fehler]="f.get(pfad)">
+          <input
+            pInputText
+            pSize="small"
+            [id]="'feld-' + pfad"
+            [value]="d.kunde.adresse[feld] ?? ''"
+            [invalid]="f.has(pfad)"
+            [class.feld-fehler]="f.has(pfad)"
+            (input)="setzeAdresse('kunde', feld, $event)"
+          />
+        </app-formular-feld>
+      }
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Lieferadresse</legend>
+    <div class="grid gap-3 sm:grid-cols-2">
+      @for (feld of lieferAdressfelder; track feld) {
+        @let pfad = 'lieferadresse.' + feld;
+        <app-formular-feld
+          [label]="adressfelder[feld]"
+          [fehler]="f.get(pfad)"
+          [class.sm:col-span-2]="feld === 'name'"
+        >
+          <input
+            pInputText
+            pSize="small"
+            [id]="'feld-' + pfad"
+            [value]="d.lieferadresse[feld] ?? ''"
+            [invalid]="f.has(pfad)"
+            [class.feld-fehler]="f.has(pfad)"
+            (input)="setzeAdresse('lieferadresse', feld, $event)"
+          />
+        </app-formular-feld>
+      }
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Lieferung</legend>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <app-formular-feld label="Lieferdatum" [fehler]="f.get('lieferdatum')">
+        <input
+          pInputText
+          pSize="small"
+          type="date"
+          id="feld-lieferdatum"
+          [value]="d.lieferdatum ?? ''"
+          [invalid]="f.has('lieferdatum')"
+          [class.feld-fehler]="f.has('lieferdatum')"
+          (input)="setzeKopf('lieferdatum', $event)"
+        />
+      </app-formular-feld>
+      <app-formular-feld label="Lieferschein-Nr.">
+        <input
+          pInputText
+          pSize="small"
+          [value]="d.lieferschein_nummer ?? ''"
+          (input)="setzeKopf('lieferschein_nummer', $event)"
+        />
+      </app-formular-feld>
+      <app-formular-feld label="Bestellnummer">
+        <input
+          pInputText
+          pSize="small"
+          [value]="d.bestellnummer ?? ''"
+          (input)="setzeKopf('bestellnummer', $event)"
+        />
+      </app-formular-feld>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Artikel</legend>
+    @if (f.get('positionen'); as text) {
+      <p class="mb-2 text-xs text-red-600 dark:text-red-400">{{ text }}</p>
+    }
+    <div class="overflow-x-auto">
+      <!-- table-fixed: feste Breiten fuer die kurzen Spalten, den ganzen
+           Rest bekommt die Bezeichnung fuer lange Artikelnamen. -->
+      <table class="w-full min-w-[32rem] table-fixed border-separate border-spacing-y-1">
+        <colgroup>
+          <col class="w-12" />
+          <col class="w-32" />
+          <col />
+          <col class="w-24" />
+          <col class="w-24" />
+          <col class="w-10" />
+        </colgroup>
+        <thead>
+          <tr class="text-left text-xs text-surface-600 dark:text-surface-300">
+            <th class="font-medium">Pos.</th>
+            <th class="font-medium">Artikel-Nr.</th>
+            <th class="font-medium">Bezeichnung</th>
+            <th class="font-medium">Menge</th>
+            <th class="font-medium">Einheit</th>
+            <th><span class="sr-only">Aktion</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (position of d.positionen; track $index; let i = $index) {
+            @let bezeichnungPfad = 'positionen.' + i + '.bezeichnung';
+            @let mengePfad = 'positionen.' + i + '.menge';
+            <tr>
+              <!-- Nur Anzeige: so kann niemand eine Nummer doppelt vergeben. -->
+              <td class="pr-1 text-surface-600 tabular-nums dark:text-surface-300">
+                {{ position.position ?? i + 1 }}
+              </td>
+              <td class="pr-1">
+                <input
+                  pInputText
+                  pSize="small"
+                  class="w-full"
+                  aria-label="Artikelnummer"
+                  [value]="position.artikelnummer ?? ''"
+                  (input)="setzePositionsText(i, 'artikelnummer', $event)"
+                />
+              </td>
+              <td class="pr-1">
+                <input
+                  pInputText
+                  pSize="small"
+                  class="w-full"
+                  aria-label="Bezeichnung"
+                  [id]="'feld-' + bezeichnungPfad"
+                  [value]="position.bezeichnung"
+                  [invalid]="f.has(bezeichnungPfad)"
+                  [class.feld-fehler]="f.has(bezeichnungPfad)"
+                  [title]="f.get(bezeichnungPfad) ?? ''"
+                  (input)="setzePositionsText(i, 'bezeichnung', $event)"
+                />
+              </td>
+              <td class="pr-1">
+                <input
+                  pInputText
+                  pSize="small"
+                  type="number"
+                  min="0"
+                  step="any"
+                  class="w-full"
+                  aria-label="Menge"
+                  [id]="'feld-' + mengePfad"
+                  [value]="position.menge ?? ''"
+                  [invalid]="f.has(mengePfad)"
+                  [class.feld-fehler]="f.has(mengePfad)"
+                  [title]="f.get(mengePfad) ?? ''"
+                  (input)="setzeMenge(i, $event)"
+                />
+              </td>
+              <td class="pr-1">
+                <input
+                  pInputText
+                  pSize="small"
+                  class="w-full"
+                  aria-label="Einheit"
+                  [value]="position.einheit ?? ''"
+                  (input)="setzePositionsText(i, 'einheit', $event)"
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  pButton
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  icon="pi pi-trash"
+                  [attr.aria-label]="'Position ' + (i + 1) + ' entfernen'"
+                  (click)="positionEntfernen(i)"
+                ></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <button
+      type="button"
+      pButton
+      text
+      size="small"
+      icon="pi pi-plus"
+      label="Position hinzufügen"
+      id="feld-positionen"
+      (click)="positionHinzufuegen()"
+    ></button>
+  </fieldset>
+</form>

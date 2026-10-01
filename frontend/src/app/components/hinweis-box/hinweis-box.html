@@ -1,0 +1,22 @@
+<div class="border-b text-sm" [class]="darstellung().farben">
+  <button
+    type="button"
+    class="flex w-full cursor-pointer items-center gap-2 px-4 py-2 text-left font-semibold"
+    [attr.aria-expanded]="offen()"
+    (click)="umschalten()"
+  >
+    <i class="pi text-xs" [class]="darstellung().icon" aria-hidden="true"></i>
+    <span class="flex-1">{{ titel() }}</span>
+    <i
+      class="pi text-xs"
+      [class]="offen() ? 'pi-chevron-up' : 'pi-chevron-down'"
+      aria-hidden="true"
+    ></i>
+  </button>
+  @if (offen()) {
+    <!-- In der Hoehe begrenzt: lange Listen scrollen in sich. -->
+    <div class="max-h-32 overflow-y-auto px-4 pb-3">
+      <ng-content />
+    </div>
+  }
+</div>

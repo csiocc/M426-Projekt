@@ -52,3 +52,19 @@ export function formatBytes(bytes: number): string {
   const value = bytes / Math.pow(1024, exponent);
   return `${value.toFixed(exponent === 0 ? 0 : 1)} ${units[exponent]}`;
 }
+
+export type JsonObjekt = { [key: string]: JsonValue };
+
+/** true fuer ein JSON-Objekt { ... } - nicht fuer null oder Arrays. */
+export function istJsonObjekt(wert: JsonValue | undefined): wert is JsonObjekt {
+  return typeof wert === 'object' && wert !== null && !Array.isArray(wert);
+}
+
+/**
+ * Der Job schreibt bei einem KI-Fehler `{"fehler": "..."}` als Resultat.
+ * Gibt dann die Meldung zurueck, sonst null.
+ */
+export function fehlerAusAntwort(wert: JsonValue): string | null {
+  if (istJsonObjekt(wert) && typeof wert['fehler'] === 'string') return wert['fehler'];
+  return null;
+}

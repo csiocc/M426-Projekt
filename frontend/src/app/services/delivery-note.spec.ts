@@ -2,8 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { JsonValue } from '../models/delivery-note';
-import { DeliveryNoteService, HttpDeliveryNoteService } from './delivery-note';
+import { Lieferschein } from '../models/lieferschein';
+import { AnalyseFehler, DeliveryNoteService, HttpDeliveryNoteService } from './delivery-note';
 
 const pngDatei = () => new File(['x'], 'ls.png', { type: 'image/png' });
 
@@ -58,7 +58,7 @@ describe('HttpDeliveryNoteService', () => {
     it('fragt nach, bis das Resultat da ist', async () => {
       vi.useFakeTimers();
       try {
-        const gesehen: JsonValue[] = [];
+        const gesehen: Lieferschein[] = [];
         service.ergebnis(7).subscribe((result) => gesehen.push(result));
 
         // Erster Versuch laeuft sofort, die KI ist aber noch nicht fertig.
@@ -70,9 +70,9 @@ describe('HttpDeliveryNoteService', () => {
         await vi.advanceTimersByTimeAsync(1500);
         http
           .expectOne('/api/delivery_notes/7')
-          .flush({ id: 7, result: { lieferant: 'Muster AG' } });
+          .flush({ id: 7, result: { kunde: { name: 'Muster AG' } } });
 
-        expect(gesehen).toEqual([{ lieferant: 'Muster AG' }]);
+        expect(gesehen.map((l) => l.kunde.name)).toEqual(['Muster AG']);
       } finally {
         vi.useRealTimers();
       }
@@ -92,8 +92,26 @@ describe('HttpDeliveryNoteService', () => {
         http.expectNone('/api/delivery_notes/7');
         expect(langsam.cancelled).toBe(false);
 
-        langsam.flush({ id: 7, result: { lieferant: 'Muster AG' } });
-        expect(await versprechen).toEqual({ lieferant: 'Muster AG' });
+        langsam.flush({ id: 7, result: { kunde: { name: 'Muster AG' } } });
+        expect((await versprechen).kunde.name).toBe('Muster AG');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('macht aus result.fehler einen AnalyseFehler, obwohl das Backend 200 sendet', async () => {
+      vi.useFakeTimers();
+      try {
+        const versprechen = firstValueFrom(service.ergebnis(7));
+
+        await vi.advanceTimersByTimeAsync(0);
+        http
+          .expectOne('/api/delivery_notes/7')
+          .flush({ id: 7, result: { fehler: 'Netzwerkfehler beim Aufruf der OpenAI-API' } });
+
+        const fehler = await versprechen.catch((e: unknown) => e);
+        expect(fehler).toBeInstanceOf(AnalyseFehler);
+        expect((fehler as Error).message).toBe('Netzwerkfehler beim Aufruf der OpenAI-API');
       } finally {
         vi.useRealTimers();
       }

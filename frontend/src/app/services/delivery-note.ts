@@ -2,7 +2,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import { Observable, exhaustMap, first, map, take, throwError, timer } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { DeliveryNote, JsonValue, validateFile } from '../models/delivery-note';
+import { DeliveryNote, fehlerAusAntwort, validateFile } from '../models/delivery-note';
+import { Lieferschein, normalisiere } from '../models/lieferschein';
 
 /** Basis-Pfad der Rails-API. Der Angular-Dev-Proxy leitet /api an localhost:3000 weiter. */
 const API_URL = '/api/delivery_notes';
@@ -12,6 +13,15 @@ const POLL_INTERVAL_MS = 1500;
 
 /** Obergrenze, damit nicht endlos gepollt wird. */
 const POLL_TIMEOUT_MS = 2 * 60 * 1000;
+
+/**
+ * Die KI konnte den Lieferschein nicht auslesen (Netzwerk, OpenAI, kaputtes JSON).
+ * Eigene Klasse, damit die Oberflaeche das von Upload-/Verbindungsfehlern
+ * unterscheiden kann.
+ */
+export class AnalyseFehler extends Error {
+  override readonly name = 'AnalyseFehler';
+}
 
 /**
  * Schnittstelle zum Backend.
@@ -27,8 +37,11 @@ export abstract class DeliveryNoteService {
   /** Laedt die Datei hoch und liefert die id des angelegten Lieferscheins. */
   abstract upload(file: File): Observable<number>;
 
-  /** Fragt nach, bis das Analyse-Ergebnis vorliegt, und gibt es dann zurueck. */
-  abstract ergebnis(id: number): Observable<JsonValue>;
+  /**
+   * Fragt nach, bis das Analyse-Ergebnis vorliegt, und gibt es als Lieferschein
+   * zurueck. Ist die Analyse gescheitert, endet das Observable mit AnalyseFehler.
+   */
+  abstract ergebnis(id: number): Observable<Lieferschein>;
 }
 
 @Service({ autoProvided: false })
@@ -61,8 +74,11 @@ export class HttpDeliveryNoteService extends DeliveryNoteService {
    * wird der naechste Takt uebersprungen statt die laufende Anfrage abzubrechen.
    * Mit switchMap kaeme bei einem dauerhaft langsamen Server nie eine Antwort
    * durch und die Nutzerin saehe den Timeout, obwohl das Backend antwortet.
+   *
+   * Scheitert die KI, antwortet das Backend trotzdem mit 200 und
+   * `result: {"fehler": "..."}` - das wird hier zum AnalyseFehler.
    */
-  ergebnis(id: number): Observable<JsonValue> {
+  ergebnis(id: number): Observable<Lieferschein> {
     const maxVersuche = Math.ceil(POLL_TIMEOUT_MS / POLL_INTERVAL_MS);
 
     return timer(0, POLL_INTERVAL_MS).pipe(
@@ -71,7 +87,6 @@ export class HttpDeliveryNoteService extends DeliveryNoteService {
       // Laeuft take() ab, bevor ein Ergebnis da ist, wirft first() - das ist
       // unser Timeout und landet unten im catchError.
       first((note) => note.result !== null),
-      map((note) => note.result as JsonValue),
       catchError((fehler) =>
         throwError(
           () =>
@@ -82,6 +97,13 @@ export class HttpDeliveryNoteService extends DeliveryNoteService {
             ),
         ),
       ),
+      // Erst nach catchError, damit der AnalyseFehler nicht zum Timeout umgedeutet wird.
+      map((note) => {
+        const result = note.result!;
+        const fehler = fehlerAusAntwort(result);
+        if (fehler !== null) throw new AnalyseFehler(fehler);
+        return normalisiere(result);
+      }),
     );
   }
 }

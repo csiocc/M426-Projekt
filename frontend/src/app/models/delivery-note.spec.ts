@@ -1,4 +1,4 @@
-import { MAX_FILE_SIZE_BYTES, formatBytes, validateFile } from './delivery-note';
+import { MAX_FILE_SIZE_BYTES, fehlerAusAntwort, formatBytes, validateFile } from './delivery-note';
 
 function fileOf(name: string, type: string, size: number): File {
   const file = new File(['x'], name, { type });
@@ -40,5 +40,16 @@ describe('formatBytes', () => {
     expect(formatBytes(512)).toBe('512 B');
     expect(formatBytes(1536)).toBe('1.5 KB');
     expect(formatBytes(20 * 1024 * 1024)).toBe('20.0 MB');
+  });
+});
+
+describe('fehlerAusAntwort', () => {
+  it('erkennt die Fehlerantwort des Jobs', () => {
+    expect(fehlerAusAntwort({ fehler: 'KI nicht erreichbar' })).toBe('KI nicht erreichbar');
+  });
+
+  it('gibt fuer ein normales Ergebnis null zurueck', () => {
+    expect(fehlerAusAntwort({ kunde: null })).toBeNull();
+    expect(fehlerAusAntwort(null)).toBeNull();
   });
 });

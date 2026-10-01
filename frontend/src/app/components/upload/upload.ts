@@ -7,26 +7,51 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { JsonPipe } from '@angular/common';
 import { SafeUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { FileUpload, FileUploadHandlerEvent, FileUploadModule } from 'primeng/fileupload';
 import { MessageModule } from 'primeng/message';
-import { DeliveryNoteService } from '../../services/delivery-note';
-import {
-  ACCEPTED_TYPES,
-  JsonValue,
-  MAX_FILE_SIZE_BYTES,
-  formatBytes,
-} from '../../models/delivery-note';
+import { AnalyseFehler, DeliveryNoteService } from '../../services/delivery-note';
+import { ACCEPTED_TYPES, MAX_FILE_SIZE_BYTES, formatBytes } from '../../models/delivery-note';
+import { Lieferschein } from '../../models/lieferschein';
+import { DateiVorschau } from '../datei-vorschau/datei-vorschau';
+import { LieferscheinEditor } from '../lieferschein-editor/lieferschein-editor';
 
 /** 'laedt' = Datei geht zum Server, 'analysiert' = Server hat sie, KI rechnet noch. */
 type Status = 'bereit' | 'laedt' | 'analysiert' | 'fertig' | 'fehler';
 
+interface Fehleranzeige {
+  /** Verstaendliche Ueberschrift fuer die Mitarbeiterin. */
+  titel: string;
+  /** Technisches Detail, z.B. die Meldung der API. */
+  detail: string;
+}
+
+/** Rohe API-Antworten koennen den ganzen JSON-Body enthalten - fuer die Anzeige kuerzen. */
+const MAX_DETAIL_LAENGE = 300;
+
+function kuerzen(text: string): string {
+  return text.length > MAX_DETAIL_LAENGE ? `${text.slice(0, MAX_DETAIL_LAENGE)} …` : text;
+}
+
+function alsFehleranzeige(fehler: Error): Fehleranzeige {
+  return {
+    titel:
+      fehler instanceof AnalyseFehler
+        ? 'Die KI konnte den Lieferschein nicht auslesen.'
+        : 'Der Lieferschein konnte nicht verarbeitet werden.',
+    detail: kuerzen(fehler.message || 'Der Upload ist fehlgeschlagen.'),
+  };
+}
+
+/**
+ * Upload eines Lieferscheins und Vorschau des Ergebnisses: links die
+ * Originaldatei, rechts die erkannten Daten zum Pruefen und Korrigieren.
+ */
 @Component({
-  imports: [ButtonModule, FileUploadModule, MessageModule, JsonPipe],
+  imports: [ButtonModule, DateiVorschau, FileUploadModule, LieferscheinEditor, MessageModule],
   selector: 'app-upload',
   styleUrl: './upload.css',
   templateUrl: './upload.html',
@@ -41,9 +66,9 @@ export class Upload {
   protected readonly formatBytes = formatBytes;
 
   protected readonly status = signal<Status>('bereit');
-  protected readonly dateiname = signal<string | null>(null);
-  protected readonly ergebnis = signal<JsonValue | null>(null);
-  protected readonly fehler = signal<string | null>(null);
+  protected readonly datei = signal<File | null>(null);
+  protected readonly ergebnis = signal<Lieferschein | null>(null);
+  protected readonly fehler = signal<Fehleranzeige | null>(null);
 
   /** Solange true, ist ein Upload unterwegs und ein zweiter wird abgewiesen. */
   protected readonly laeuft = computed(
@@ -75,10 +100,9 @@ export class Upload {
     const file = event.files[0];
     if (!file) return;
 
+    this.leeren();
+    this.datei.set(file);
     this.status.set('laedt');
-    this.dateiname.set(file.name);
-    this.ergebnis.set(null);
-    this.fehler.set(null);
 
     this.laufend = this.service
       .upload(file)
@@ -90,12 +114,12 @@ export class Upload {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (result) => {
-          this.ergebnis.set(result);
+        next: (lieferschein) => {
+          this.ergebnis.set(lieferschein);
           this.status.set('fertig');
         },
-        error: (err: Error) => {
-          this.fehler.set(err.message || 'Der Upload ist fehlgeschlagen.');
+        error: (fehler: Error) => {
+          this.fehler.set(alsFehleranzeige(fehler));
           this.status.set('fehler');
         },
       });
@@ -117,8 +141,12 @@ export class Upload {
     // Zuruecksetzen nur zufaellig, weil onRemove/onClear die Liste ohnehin aendern.
     uploader.files = [];
 
+    this.leeren();
     this.status.set('bereit');
-    this.dateiname.set(null);
+  }
+
+  private leeren(): void {
+    this.datei.set(null);
     this.ergebnis.set(null);
     this.fehler.set(null);
   }
