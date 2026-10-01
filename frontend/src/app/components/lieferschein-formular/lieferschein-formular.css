@@ -1,0 +1,6 @@
+/* Einheitlicher roter Rahmen fuer alle fehlerhaften Felder. PrimeNGs p-invalid
+   allein greift nicht bei jedem Feldtyp sichtbar (z.B. type="date"), darum
+   hier ausdruecklich - mit derselben Farbe wie das PrimeNG-Theme. */
+.feld-fehler {
+  border-color: var(--p-inputtext-invalid-border-color, #f87171);
+}

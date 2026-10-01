@@ -1,0 +1,110 @@
+<article
+  class="flex h-[85vh] flex-col overflow-hidden rounded-xl border border-surface-200 bg-surface-0 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+>
+  <header
+    class="flex shrink-0 flex-wrap items-center gap-2 border-b border-surface-200 px-4 py-3 dark:border-surface-700"
+  >
+    <div class="mr-auto min-w-0">
+      <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Erkannte Daten</h2>
+      <p class="text-xs text-surface-500">Vor dem Export prüfen und korrigieren</p>
+    </div>
+    @if (hinweise().length > 0) {
+      <p-tag
+        severity="warn"
+        icon="pi pi-exclamation-triangle"
+        [value]="hinweise().length + ' Fehler'"
+      />
+    } @else {
+      <p-tag severity="success" icon="pi pi-check-circle" value="Vollständig" />
+    }
+    @if (kiHinweise().length > 0) {
+      <p-tag
+        severity="info"
+        icon="pi pi-sparkles"
+        [value]="kiHinweise().length === 1 ? '1 KI-Hinweis' : kiHinweise().length + ' KI-Hinweise'"
+      />
+    }
+    <button
+      type="button"
+      pButton
+      text
+      rounded
+      size="small"
+      severity="secondary"
+      icon="pi pi-undo"
+      aria-label="Erkannte Daten wiederherstellen"
+      title="Erkannte Daten wiederherstellen"
+      [disabled]="!geaendert()"
+      (click)="wiederherstellen()"
+    ></button>
+  </header>
+
+  <nav
+    class="flex shrink-0 gap-1 border-b border-surface-200 px-4 text-sm dark:border-surface-700"
+    aria-label="Ansicht"
+  >
+    @for (tab of tabs; track tab.id) {
+      <button
+        type="button"
+        class="-mb-px cursor-pointer border-b-2 px-3 py-2 font-medium"
+        [class]="
+          ansicht() === tab.id
+            ? 'border-primary text-primary'
+            : 'border-transparent text-surface-500'
+        "
+        [attr.aria-pressed]="ansicht() === tab.id"
+        (click)="ansicht.set(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </nav>
+
+  <!-- Eigene Fehler und Vermutungen der KI getrennt. Die Fehler stehen ohnehin
+       an den Feldern, darum sind beide Listen nur aufklappbare Zusammenfassungen. -->
+  @if (hinweise().length > 0) {
+    <app-hinweis-box
+      art="fehler"
+      [titel]="'Fehlende oder fehlerhafte Angaben (' + hinweise().length + ')'"
+    >
+      <dl class="space-y-2">
+        @for (gruppe of hinweisGruppen(); track gruppe.bereich) {
+          <div>
+            <dt class="text-xs font-semibold tracking-wide uppercase opacity-70">
+              {{ gruppe.bereich }}
+            </dt>
+            @for (hinweis of gruppe.hinweise; track hinweis.feld) {
+              <dd>
+                <button
+                  type="button"
+                  class="cursor-pointer text-left hover:underline"
+                  title="Zum Feld springen"
+                  (click)="zumFeld(hinweis.feld)"
+                >
+                  {{ hinweis.text }}
+                </button>
+              </dd>
+            }
+          </div>
+        }
+      </dl>
+    </app-hinweis-box>
+  }
+  @if (kiHinweise().length > 0) {
+    <app-hinweis-box art="ki" [titel]="'Hinweise der KI (' + kiHinweise().length + ')'">
+      <ul class="list-disc space-y-1 pl-5">
+        @for (hinweis of kiHinweise(); track $index) {
+          <li>{{ hinweis }}</li>
+        }
+      </ul>
+    </app-hinweis-box>
+  }
+
+  <div class="min-h-0 flex-1 overflow-y-auto">
+    @if (ansicht() === 'formular') {
+      <app-lieferschein-formular [(daten)]="daten" [fehler]="feldFehler()" />
+    } @else {
+      <app-json-editor [(daten)]="daten" />
+    }
+  </div>
+</article>
