@@ -1,9 +1,5 @@
 # Portfolio Scrum-Experiment
 
-Das Portfolio ist der zentrale Ort, an dem ihr euren Scrum-Prozess, eure wichtigsten Artefakte, eure Erkenntnisse und eure KI-Nutzung dokumentiert.
-
-Ihr könnt diese Vorlage als eigene Datei in eurem Projekt-Repository übernehmen, zum Beispiel als `portfolio.md`.
-
 ## 1. Team und Produkt
 
 | Punkt          | Inhalt                                                                   |
@@ -87,13 +83,13 @@ Eine User Story gilt für uns als erledigt, wenn:
 
 ### Sprint 1
 
-| Punkt                               | Inhalt                                                                                                                        |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Sprintziel                          | Ein erstes klickbares MVP erstellen, bei dem ein Lieferschein hochgeladen und erste Daten durch die KI erkannt werden können. |
-| Ausgewählte User Stories            | Upload, Kundendaten, Artikel und Mengen, Lieferdatum und Lieferadresse                                                        |
-| Review-Ergebnis                     | Das Sprintziel wurde erreicht. Alle ausgewählten User Stories wurden umgesetzt und im Review erfolgreich gezeigt.             |
-| Retro-Erkenntnis                    | Die Aufgabenverteilung und die Zusammenarbeit im Team haben gut funktioniert.                                                |
-| Verbesserungsmassnahme für Sprint 2 | Die erfolgreiche Aufgabenverteilung wird beibehalten und Zwischenergebnisse werden regelmässig gemeinsam getestet.            |
+| Punkt | Inhalt |
+|---|---|
+| Sprintziel | Ein erstes klickbares MVP erstellen, bei dem ein Lieferschein hochgeladen, wichtige Daten durch die KI erkannt und als JSON ausgegeben werden können. |
+| Ausgewählte User Stories | Upload, Kundendaten, Artikel und Mengen, Lieferdatum und Lieferadresse, JSON-Ausgabe |
+| Review-Ergebnis | Alle fünf User Stories wurden umgesetzt, im Review gezeigt und vom Product Owner akzeptiert. Das Sprintziel wurde erreicht. |
+| Retro-Erkenntnis | Die Aufgabenverteilung, Kommunikation und Zusammenarbeit im Team haben gut funktioniert. Es wurden keine grösseren Probleme festgestellt. |
+| Verbesserungsmassnahme für Sprint 2 | Es wurden keine neuen Verbesserungsmassnahmen beschlossen. |
 
 #### Nachweis Sprint 1
 
@@ -101,13 +97,17 @@ Eine User Story gilt für uns als erledigt, wenn:
 
 ### Sprint 2
 
-| Punkt                               | Inhalt                                                                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Sprintziel                          | Die Webapp verbessern, damit die KI zuverlässiger arbeitet und Ergebnisse verständlich kontrolliert werden können. |
-| Ausgewählte User Stories            | Bessere KI-Analyse, Vorschau der erkannten Daten, Fehlermeldung bei ungültiger Datei                                |
-| Review-Ergebnis                     | Noch offen                                                                                                          |
-| Retro-Erkenntnis                    | Noch offen                                                                                                          |
-| Verbesserungsmassnahme für Sprint 3 | Noch offen                                                                                                          |
+| Punkt | Inhalt |
+|---|---|
+| Sprintziel | Die Webapp verbessern, damit die KI zuverlässiger arbeitet und die erkannten Daten verständlich kontrolliert werden können. |
+| Ausgewählte User Stories | Bessere KI-Analyse, Vorschau der erkannten Daten, Fehlermeldung bei ungültiger Datei |
+| Review-Ergebnis | Alle drei User Stories wurden umgesetzt, im Review gezeigt und vom Product Owner akzeptiert. Das Sprintziel wurde erreicht. |
+| Retro-Erkenntnis | Die Aufgabenverteilung, Kommunikation und Zusammenarbeit im Team haben gut funktioniert. Es wurden keine grösseren Probleme festgestellt. |
+| Verbesserungsmassnahme für Sprint 3 | Es wurden keine neuen Verbesserungsmassnahmen beschlossen. |
+
+#### Nachweis Sprint 2
+
+![Abgeschlossenes Sprint-2-Board](./sprint2-board.png)
 
 ### Sprint 3
 
