@@ -108,16 +108,15 @@ Eine User Story gilt für uns als erledigt, wenn:
 #### Nachweis Sprint 2
 
 ![Abgeschlossenes Sprint-2-Board](./sprint2-board.png)
-
 ### Sprint 3
 
-| Punkt                       | Inhalt                                                                        |
-| --------------------------- | ----------------------------------------------------------------------------- |
-| Sprintziel                  | Zusatzfunktionen ergänzen und das Produkt für das Klassen-Review vorbereiten. |
-| ausgewählte User Stories    | Fehlerhafte Erkennungen bearbeiten, JSON-Datei herunterladen                  |
-| Review-Ergebnis             | Noch offen                                                                    |
-| Retro-Erkenntnis            | Noch offen                                                                    |
-| Vorbereitung Klassen-Review | Noch offen                                                                    |
+| Punkt | Inhalt |
+|---|---|
+| Sprintziel | Zusatzfunktionen ergänzen und das Produkt für das Klassen-Review vorbereiten. |
+| Ausgewählte User Stories | Statusanzeige während der Analyse, fehlerhafte Erkennungen bearbeiten, JSON-Datei herunterladen |
+| Review-Ergebnis | Noch offen |
+| Retro-Erkenntnis | Noch offen |
+| Vorbereitung Klassen-Review | Noch offen |
 
 ## 5. Scrum-Erfahrungen
 
