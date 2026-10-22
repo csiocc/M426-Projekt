@@ -53,4 +53,14 @@ class ExtractDeliveryNoteJobTest < ActiveJob::TestCase
 
     assert_nothing_raised { ExtractDeliveryNoteJob.perform_now(id) }
   end
+
+  test "unerwarteter Fehler schreibt eine generische Meldung und schlägt trotzdem fehl" do
+    fehler = ->(_attachment) { raise RuntimeError, "Boom" }
+
+    stub_extractor(fehler) do
+      assert_raises(RuntimeError) { ExtractDeliveryNoteJob.perform_now(note.id) }
+    end
+
+    assert_equal "Unerwarteter Fehler bei der Erkennung", note.reload.result["fehler"]
+  end
 end

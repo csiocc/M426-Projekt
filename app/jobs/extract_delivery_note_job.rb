@@ -8,7 +8,10 @@ class ExtractDeliveryNoteJob < ApplicationJob
     note.update!(result: LieferscheinExtractor.from_attachment(note.file))
   rescue LieferscheinExtractor::Error => e
     # Ohne Eintrag würde das Frontend endlos weiterpollen.
-    Rails.logger.error("KI-Erkennung fehlgeschlagen (Lieferschein #{delivery_note_id}): #{e.message}")
     note.update!(result: { "fehler" => e.message })
+  rescue StandardError
+    # also catch unexpected errors, so the frontend allways gets an answer
+    note.update!(result: { "fehler" => "Unerwarteter Fehler bei der Erkennung" })
+    raise
   end
 end
