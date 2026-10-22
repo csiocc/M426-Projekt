@@ -1,1 +1,4 @@
 web: bin/rails server
+# exec, damit SIGTERM von foreman ng direkt trifft und nicht bei npm haengen bleibt.
+# env -u PORT, weil ng sonst die PORT-Variable von foreman (3100) uebernimmt.
+frontend: cd frontend && exec env -u PORT node_modules/.bin/ng serve
