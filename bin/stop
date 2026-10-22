@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+# Stoppt, was bin/start gestartet hat.
+
+PIDFILE=tmp/pids/dev.pid
+if [ ! -f "$PIDFILE" ]; then
+  echo "Nichts gestartet (kein $PIDFILE)."
+  exit 0
+fi
+
+PID=$(cat "$PIDFILE")
+if kill -0 "$PID" 2>/dev/null; then
+  kill "$PID"
+  while kill -0 "$PID" 2>/dev/null; do sleep 0.2; done
+  echo "Gestoppt (PID $PID)."
+else
+  echo "Prozess $PID lief nicht mehr."
+fi
+rm -f "$PIDFILE"
