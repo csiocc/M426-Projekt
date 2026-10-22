@@ -3,6 +3,10 @@ module Api
     rescue_from ActiveRecord::RecordNotFound do
       render json: { error: "Lieferschein nicht gefunden" }, status: :not_found
     end
+    # restrict uploads to 10 within 15min
+    rate_limit to: 10, within: 15.minute, only: :create, with: -> {
+      render json: { error: "Zu viele Uploads. Bitte 15 Minuten warten." }, status: :too_many_requests
+    }
 
     def create
       file = params[:file]

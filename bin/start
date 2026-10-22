@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# Startet Rails und Angular im Hintergrund (foreman mit Procfile.dev).
+# Ausgabe in log/dev.log, Prozess-ID in tmp/pids/dev.pid.
+set -e
+cd "$(dirname "$0")/.."
+
+PIDFILE=tmp/pids/dev.pid
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+  echo "Läuft bereits (PID $(cat "$PIDFILE")). Stoppen mit bin/stop."
+  exit 1
+fi
+
+bundle check >/dev/null || bundle install
+[ -d frontend/node_modules ] || npm --prefix frontend ci
+
+mkdir -p tmp/pids log
+nohup bin/dev >log/dev.log 2>&1 &
+echo $! >"$PIDFILE"
+echo "Gestartet (PID $!). Rails: http://localhost:3000, App: http://localhost:4200"
+echo "Log: tail -f log/dev.log"

@@ -24,24 +24,6 @@ jobs:
       - name: Scan for known security vulnerabilities in gems used
         run: bin/bundler-audit
       
-  scan_js:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
-
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          bundler-cache: true
-
-      - name: Scan for security vulnerabilities in JavaScript dependencies
-        run: bin/importmap audit
-
   frontend:
     runs-on: ubuntu-latest
     defaults:

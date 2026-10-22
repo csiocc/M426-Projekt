@@ -4,6 +4,8 @@ module Api
   class DeliveryNotesControllerTest < ActionDispatch::IntegrationTest
     include ActiveJob::TestHelper
 
+    setup { Rails.cache.clear }
+
     test "legt Lieferschein aus Bild an und liefert die id" do
       assert_difference("DeliveryNote.count", 1) do
         post api_delivery_notes_url, params: { file: fixture_file_upload("lieferschein.png", "image/png") }
@@ -62,6 +64,19 @@ module Api
       get api_delivery_note_url(0)
       assert_response :not_found
       assert_equal "Lieferschein nicht gefunden", response.parsed_body["error"]
+    end
+
+    test "ab dem elften Upload in 15 Minuten 429" do
+      10.times { post api_delivery_notes_url }
+      post api_delivery_notes_url
+      assert_response :too_many_requests
+      assert_equal "Zu viele Uploads. Bitte 15 Minuten warten.", response.parsed_body["error"]
+    end
+
+    test "show ist nicht begrenzt" do
+      note = create_note
+      11.times { get api_delivery_note_url(note) }
+      assert_response :success
     end
 
     private
