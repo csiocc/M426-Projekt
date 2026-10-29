@@ -79,6 +79,53 @@ describe('Upload', () => {
     expect(text).toContain('20.0 MB');
   });
 
+  it('zeigt waehrend des Hochladens einen Status an', async () => {
+    // NEVER: der Upload bleibt haengen, die Komponente steht also auf 'laedt'.
+    const fixture = await setup(new StubService(NEVER));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const status = element(fixture, '[role="status"]');
+    expect(status?.textContent).toContain('Lieferschein wird hochgeladen');
+    expect(status?.textContent).toContain('Schritt 1 von 2');
+    expect(element(fixture, '.pi-spinner')).not.toBeNull();
+  });
+
+  it('zeigt waehrend der Analyse einen Status mit dem Dateinamen an', async () => {
+    // Upload fertig, die KI antwortet aber nie - die Komponente steht auf 'analysiert'.
+    const fixture = await setup(new StubService(of(1), NEVER));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const status = element(fixture, '[role="status"]');
+    expect(status?.textContent).toContain('lieferschein.pdf wird analysiert');
+    expect(status?.textContent).toContain('Schritt 2 von 2');
+    expect(element(fixture, 'app-lieferschein-editor')).toBeNull();
+  });
+
+  it('zeigt nach erfolgreicher Analyse eine Erfolgsmeldung', async () => {
+    const fixture = await setup(new StubService(of(1)));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const status = element(fixture, '[role="status"]');
+    expect(status?.textContent).toContain('Analyse abgeschlossen');
+    expect(status?.textContent).toContain('lieferschein.pdf wurde erfolgreich ausgelesen');
+    expect(element(fixture, '.pi-spinner')).toBeNull();
+  });
+
+  it('zeigt bei einem Fehler keine Erfolgsmeldung, aber einen Hinweis zum weiteren Vorgehen', async () => {
+    const fixture = await setup(new StubService(throwError(() => new Error('Datei fehlt'))));
+    ausloesen(fixture, pdfDatei());
+    await fixture.whenStable();
+
+    const text = textVon(fixture);
+    expect(text).not.toContain('Analyse abgeschlossen');
+    expect(element(fixture, '[role="alert"]')?.textContent).toContain(
+      'Entferne die Datei und versuche es erneut.',
+    );
+  });
+
   it('zeigt nach der Analyse links die Datei und rechts die erkannten Daten', async () => {
     const fixture = await setup(new StubService(of(1)));
     ausloesen(fixture, pdfDatei());
