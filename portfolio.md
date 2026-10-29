@@ -131,15 +131,10 @@ Beschreibt konkret:
 
 ## 6. Persönliche Kurzreflexionen
 
-Jedes Teammitglied ergänzt kurz:
-
-## 6. Persönliche Kurzreflexionen
-
-Jedes Teammitglied ergänzt kurz:
-
 | Name | Beitrag | wichtigste Erkenntnis | nächster Lernschritt |
 | ---- | ------- | --------------------- | -------------------- |
 | Andy Hess | Zuständig für die KI-Anbindung: Prompt zum Auslesen von Kunde, Artikeln, Mengen, Lieferdatum und Lieferadresse, JSON-Format und der `LieferscheinExtractor` (OpenAI mit Structured Outputs, Bild und PDF) samt Doku und Tests (PR #11). Die sechs Review-Kommentare eingearbeitet und die CI-Fehler (RuboCop, Testsuite) behoben. | Auch KI-generierter Code braucht Review und Tests: Im Review und in der CI sind Lücken aufgefallen, die ich selbst nicht gesehen hatte (Netzwerkfehler, abgeschnittene Antworten, Lint- und Testfehler). Ausserdem gehören API-Keys nie in Code, Repository oder Chat, sondern in Credentials oder Umgebungsvariablen. | Tests und Linter lokal ausführen, bevor ich pushe, und Fehlerfälle von Anfang an mitdenken statt erst im Review. Dazu die Erkennungsqualität der KI mit mehreren echten Lieferscheinen systematisch prüfen. |
+| Melvin Jenni | Zuständig für das Frontend: Angular-App mit PrimeNG und Tailwind aufgesetzt, an die Rails-API angebunden und die Ordner sauber aufgeteilt. Die sieben Review-Punkte aus PR #21 eingebaut (z. B. kein doppelter Upload, Dark Mode, Frontend-Tests in der CI). Die Vorschau der erkannten Daten gebaut (LA-12) und die Statusanzeige mit Erfolgsmeldung (LA-14). | Bevor ich etwas Neues baue, schaue ich zuerst, was schon da ist. Bei LA-14 war vieles schon fertig, es fehlte nur die Erfolgsmeldung. Ausserdem habe ich gemerkt: Was die KI baut, muss ich selbst im Browser testen. Meine erste Vorschau mit reinem JSON war für Mitarbeiter zu schwierig, ein Formular ist viel besser. | Mehr eigene Tests schreiben und meine Entwicklungsumgebung aktuell halten. Die Tests liefen bei mir zuerst nicht, weil meine Node-Version zu alt war. |
 | Semin Banovi (Product Owner) | Backlog geführt, User Stories geschrieben und priorisiert, Fragen vom Team beantwortet | Unklare Stories kosten im Sprint viel Zeit, deshalb muss ich sie genauer beschreiben | Bessere Akzeptanzkriterien schreiben und früher Feedback einholen |
 
 ## 7. KI-Nutzungsnachweis
