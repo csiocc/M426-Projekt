@@ -1,5 +1,7 @@
 import {
   Lieferschein,
+  exportDateiname,
+  exportJson,
   gruppiereHinweise,
   neuePosition,
   normalisiere,
@@ -183,5 +185,35 @@ describe('neuePosition', () => {
 
   it('beginnt bei 1, wenn noch keine Position da ist', () => {
     expect(neuePosition([]).position).toBe(1);
+  });
+});
+
+describe('exportDateiname', () => {
+  it('nimmt die Lieferschein-Nummer', () => {
+    expect(exportDateiname(beispiel())).toBe('lieferschein-LS-2026-0042.json');
+  });
+
+  it('nimmt ohne Nummer das Lieferdatum', () => {
+    const daten = { ...beispiel(), lieferschein_nummer: null };
+    expect(exportDateiname(daten)).toBe(`lieferschein-${daten.lieferdatum}.json`);
+  });
+
+  it('ersetzt Zeichen, die in Dateinamen stoeren', () => {
+    const daten = { ...beispiel(), lieferschein_nummer: ' LS 2026/0042: Nord ' };
+    expect(exportDateiname(daten)).toBe('lieferschein-LS-2026-0042-Nord.json');
+  });
+
+  it('faellt ohne Nummer und Datum auf einen festen Namen zurueck', () => {
+    const daten = { ...beispiel(), lieferschein_nummer: '  ', lieferdatum: null };
+    expect(exportDateiname(daten)).toBe('lieferschein.json');
+  });
+});
+
+describe('exportJson', () => {
+  it('liefert gueltiges, eingeruecktes JSON mit allen Feldern', () => {
+    const json = exportJson(beispiel());
+
+    expect(JSON.parse(json)).toEqual(beispiel());
+    expect(json).toContain('\n  "kunde": {');
   });
 });

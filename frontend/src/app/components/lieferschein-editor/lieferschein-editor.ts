@@ -8,7 +8,14 @@ import {
 } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { Lieferschein, gruppiereHinweise, pruefeLieferschein } from '../../models/lieferschein';
+import {
+  Lieferschein,
+  exportDateiname,
+  exportJson,
+  gruppiereHinweise,
+  pruefeLieferschein,
+} from '../../models/lieferschein';
+import { dateiSpeichern } from '../../utils/datei-speichern';
 import { HinweisBox } from '../hinweis-box/hinweis-box';
 import { JsonEditor } from '../json-editor/json-editor';
 import { LieferscheinFormular } from '../lieferschein-formular/lieferschein-formular';
@@ -51,8 +58,28 @@ export class LieferscheinEditor {
     () => JSON.stringify(this.daten()) !== JSON.stringify(this.original()),
   );
 
+  /**
+   * true, solange im JSON-Tab ungueltiger Text steht. `daten` haelt dann noch
+   * den letzten gueltigen Stand - ein Download wuerde die Eingabe still verlieren.
+   */
+  protected readonly jsonUngueltig = signal(false);
+
   protected wiederherstellen(): void {
     this.daten.set(structuredClone(this.original()));
+    // Der JSON-Tab formatiert den Text dabei neu, ein Tippfehler ist damit weg.
+    this.jsonUngueltig.set(false);
+  }
+
+  protected ansichtWechseln(ansicht: Ansicht): void {
+    this.ansicht.set(ansicht);
+    // Beim Verlassen verwirft der JSON-Tab den ungueltigen Entwurf.
+    if (ansicht === 'formular') this.jsonUngueltig.set(false);
+  }
+
+  /** Speichert den aktuellen Stand, also inklusive aller Korrekturen, als .json-Datei. */
+  protected herunterladen(): void {
+    const daten = this.daten();
+    dateiSpeichern(exportJson(daten), exportDateiname(daten), 'application/json');
   }
 
   /** Springt aus der Fehlerliste zum betroffenen Feld im Formular. */
@@ -63,7 +90,7 @@ export class LieferscheinEditor {
       return;
     }
     // Aus dem JSON-Tab: das Feld existiert erst nach dem naechsten Rendern.
-    this.ansicht.set('formular');
+    this.ansichtWechseln('formular');
     setTimeout(fokussieren);
   }
 }
