@@ -133,9 +133,14 @@ Beschreibt konkret:
 
 Jedes Teammitglied ergänzt kurz:
 
+## 6. Persönliche Kurzreflexionen
+
+Jedes Teammitglied ergänzt kurz:
+
 | Name | Beitrag | wichtigste Erkenntnis | nächster Lernschritt |
 | ---- | ------- | --------------------- | -------------------- |
 | Andy Hess | Zuständig für die KI-Anbindung: Prompt zum Auslesen von Kunde, Artikeln, Mengen, Lieferdatum und Lieferadresse, JSON-Format und der `LieferscheinExtractor` (OpenAI mit Structured Outputs, Bild und PDF) samt Doku und Tests (PR #11). Die sechs Review-Kommentare eingearbeitet und die CI-Fehler (RuboCop, Testsuite) behoben. | Auch KI-generierter Code braucht Review und Tests: Im Review und in der CI sind Lücken aufgefallen, die ich selbst nicht gesehen hatte (Netzwerkfehler, abgeschnittene Antworten, Lint- und Testfehler). Ausserdem gehören API-Keys nie in Code, Repository oder Chat, sondern in Credentials oder Umgebungsvariablen. | Tests und Linter lokal ausführen, bevor ich pushe, und Fehlerfälle von Anfang an mitdenken statt erst im Review. Dazu die Erkennungsqualität der KI mit mehreren echten Lieferscheinen systematisch prüfen. |
+| Semin Banovi (Product Owner) | Backlog geführt, User Stories geschrieben und priorisiert, Fragen vom Team beantwortet | Unklare Stories kosten im Sprint viel Zeit, deshalb muss ich sie genauer beschreiben | Bessere Akzeptanzkriterien schreiben und früher Feedback einholen |
 
 ## 7. KI-Nutzungsnachweis
 
