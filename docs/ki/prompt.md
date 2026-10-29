@@ -12,9 +12,9 @@ Der Prompt besteht aus drei Teilen, die zusammen an die OpenAI **Responses-API**
    Struktur der Antwort garantiert; der Prompt muss das Format nicht mehr
    beschreiben und kann sich auf die *Inhalte* konzentrieren.
 
-Modell: `gpt-4o-2024-08-06` (Vision + Structured Outputs). Für günstige Tests
-kann per Umgebungsvariable `OPENAI_MODEL=gpt-4o-mini` umgestellt werden.
-Token-Limit und Timeouts sind ebenfalls per ENV überschreibbar
+Modell: `gpt-6-luna` (Standard seit 01.10.2026, vorher `gpt-4o-2024-08-06`),
+per Umgebungsvariable `OPENAI_MODEL` überschreibbar. Token-Limit (Standard
+32000) und Timeouts sind ebenfalls per ENV überschreibbar
 (`OPENAI_MAX_OUTPUT_TOKENS`, `OPENAI_OPEN_TIMEOUT`, `OPENAI_READ_TIMEOUT`).
 
 Der Prompt liegt im Code als Konstante `LieferscheinExtractor::Prompt::SYSTEM`
