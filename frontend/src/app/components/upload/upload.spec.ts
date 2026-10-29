@@ -75,7 +75,7 @@ describe('Upload', () => {
   it('zeigt Titel und Hinweistext', async () => {
     const fixture = await setup(new StubService(of(1)));
     const text = textVon(fixture);
-    expect(text).toContain('Lieferscheine');
+    expect(text).toContain('Lieferschein hochladen.');
     expect(text).toContain('20.0 MB');
   });
 

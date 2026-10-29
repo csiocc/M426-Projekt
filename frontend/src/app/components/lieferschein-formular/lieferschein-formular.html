@@ -1,9 +1,9 @@
 @let d = daten();
 @let f = fehler();
 
-<form class="space-y-6 p-4 text-sm" (submit)="$event.preventDefault()">
+<form class="space-y-7 p-5 text-sm" (submit)="$event.preventDefault()">
   <fieldset>
-    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Kunde</legend>
+    <legend class="mb-3 text-[0.95rem] font-semibold tracking-tight text-label">Kunde</legend>
     <div class="grid gap-3 sm:grid-cols-2">
       <app-formular-feld label="Name" [fehler]="f.get('kunde.name')">
         <input
@@ -42,7 +42,9 @@
   </fieldset>
 
   <fieldset>
-    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Lieferadresse</legend>
+    <legend class="mb-3 text-[0.95rem] font-semibold tracking-tight text-label">
+      Lieferadresse
+    </legend>
     <div class="grid gap-3 sm:grid-cols-2">
       @for (feld of lieferAdressfelder; track feld) {
         @let pfad = 'lieferadresse.' + feld;
@@ -66,7 +68,7 @@
   </fieldset>
 
   <fieldset>
-    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Lieferung</legend>
+    <legend class="mb-3 text-[0.95rem] font-semibold tracking-tight text-label">Lieferung</legend>
     <div class="grid gap-3 sm:grid-cols-3">
       <app-formular-feld label="Lieferdatum" [fehler]="f.get('lieferdatum')">
         <input
@@ -100,9 +102,9 @@
   </fieldset>
 
   <fieldset>
-    <legend class="mb-2 font-semibold text-surface-900 dark:text-surface-0">Artikel</legend>
+    <legend class="mb-3 text-[0.95rem] font-semibold tracking-tight text-label">Artikel</legend>
     @if (f.get('positionen'); as text) {
-      <p class="mb-2 text-xs text-red-600 dark:text-red-400">{{ text }}</p>
+      <p class="mb-2 text-xs text-danger">{{ text }}</p>
     }
     <div class="overflow-x-auto">
       <!-- table-fixed: feste Breiten fuer die kurzen Spalten, den ganzen
@@ -117,7 +119,7 @@
           <col class="w-10" />
         </colgroup>
         <thead>
-          <tr class="text-left text-xs text-surface-600 dark:text-surface-300">
+          <tr class="text-left text-xs text-label-2">
             <th class="font-medium">Pos.</th>
             <th class="font-medium">Artikel-Nr.</th>
             <th class="font-medium">Bezeichnung</th>
@@ -132,7 +134,7 @@
             @let mengePfad = 'positionen.' + i + '.menge';
             <tr>
               <!-- Nur Anzeige: so kann niemand eine Nummer doppelt vergeben. -->
-              <td class="pr-1 text-surface-600 tabular-nums dark:text-surface-300">
+              <td class="pr-1 text-label-2 tabular-nums">
                 {{ position.position ?? i + 1 }}
               </td>
               <td class="pr-1">

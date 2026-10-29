@@ -1,17 +1,19 @@
 @if (fehler(); as meldung) {
-  <div
-    role="alert"
-    class="shrink-0 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200"
-  >
-    <p class="font-semibold">Ungültiges JSON – prüfe Klammern, Kommas und Anführungszeichen.</p>
-    <p class="text-xs opacity-80">Das Formular zeigt den letzten gültigen Stand. {{ meldung }}</p>
+  <div role="alert" class="mx-5 mt-4 shrink-0 rounded-xl bg-danger/10 px-3.5 py-2.5 text-sm">
+    <p class="font-medium text-danger">
+      Ungültiges JSON – prüfe Klammern, Kommas und Anführungszeichen.
+    </p>
+    <p class="mt-0.5 text-xs text-label-2">
+      Bis das JSON stimmt, gilt der letzte gültige Stand und der Download ist gesperrt.
+      {{ meldung }}
+    </p>
   </div>
 }
 <textarea
   pTextarea
   aria-label="Erkannte Daten als JSON bearbeiten"
   spellcheck="false"
-  class="min-h-0 w-full flex-1 resize-none rounded-none border-0 p-4 font-mono text-xs leading-relaxed shadow-none"
+  class="min-h-0 w-full flex-1 resize-none rounded-none border-0 bg-transparent p-5 font-mono text-xs leading-relaxed shadow-none"
   [invalid]="fehler() !== null"
   [value]="text()"
   (input)="eingabe($event)"

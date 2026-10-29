@@ -7,7 +7,6 @@ import {
   signal,
 } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import {
   Lieferschein,
   exportDateiname,
@@ -33,7 +32,7 @@ const TABS: readonly { id: Ansicht; label: string }[] = [
  */
 @Component({
   selector: 'app-lieferschein-editor',
-  imports: [ButtonModule, HinweisBox, JsonEditor, LieferscheinFormular, TagModule],
+  imports: [ButtonModule, HinweisBox, JsonEditor, LieferscheinFormular],
   templateUrl: './lieferschein-editor.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block min-w-0' },

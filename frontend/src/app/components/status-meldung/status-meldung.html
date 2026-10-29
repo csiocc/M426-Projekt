@@ -1,0 +1,15 @@
+<div class="karte flex items-start gap-4 p-5" [attr.role]="rolle()">
+  <span
+    class="flex size-10 shrink-0 items-center justify-center rounded-full"
+    [class]="darstellung().farbe"
+    aria-hidden="true"
+  >
+    <i class="pi text-base" [class]="darstellung().icon"></i>
+  </span>
+  <div class="min-w-0 flex-1 pt-0.5">
+    <p class="font-semibold tracking-tight text-label">{{ titel() }}</p>
+    <div class="mt-0.5 text-sm break-words text-label-2">
+      <ng-content />
+    </div>
+  </div>
+</div>

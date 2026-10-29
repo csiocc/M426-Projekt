@@ -8,13 +8,11 @@ export type HinweisArt = 'fehler' | 'ki';
  */
 const DARSTELLUNG: Record<HinweisArt, { farben: string; icon: string }> = {
   fehler: {
-    farben:
-      'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100',
+    farben: 'bg-warning/10 text-warning',
     icon: 'pi-exclamation-triangle',
   },
   ki: {
-    farben:
-      'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100',
+    farben: 'bg-accent/10 text-accent',
     icon: 'pi-sparkles',
   },
 };
