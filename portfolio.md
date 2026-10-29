@@ -133,9 +133,13 @@ Beschreibt konkret:
 
 Jedes Teammitglied ergänzt kurz:
 
+## 6. Persönliche Kurzreflexionen
+
+Jedes Teammitglied ergänzt kurz:
+
 | Name | Beitrag | wichtigste Erkenntnis | nächster Lernschritt |
 | ---- | ------- | --------------------- | -------------------- |
-|      |         |                       |                      |
+| Semin Banovi (Product Owner) | Backlog geführt, User Stories geschrieben und priorisiert, Fragen vom Team beantwortet | Unklare Stories kosten im Sprint viel Zeit, deshalb muss ich sie genauer beschreiben | Bessere Akzeptanzkriterien schreiben und früher Feedback einholen |
 
 ## 7. KI-Nutzungsnachweis
 
