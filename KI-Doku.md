@@ -2,7 +2,7 @@
 
 Dieses Dokument hält fest, wie wir im Scrum-Experiment KI als Hilfsmittel einsetzen, und führt den KI-Nutzungsnachweis nach der Vorlage der TBZ. Grundlage sind die beiden Modul-Dokumente [KI-Unterstützung](https://gitlab.com/ch-tbz-it/Stud/m426/-/blob/main/Ressourcen/Scrum_Experiment/KI_Unterstuetzung.md) und [KI-Nutzungsnachweis](https://gitlab.com/ch-tbz-it/Stud/m426/-/blob/main/Ressourcen/Scrum_Experiment/KI_Nutzungsnachweis.md). Backlog und Sprints führen wir im [Jira-Board LA](https://m426lieferscheine.atlassian.net/jira/software/projects/LA/boards/34/backlog).
 
-Stand: Tag 5, 17.09.2026.
+Stand: 29.10.2026.
 
 ## Was wir als Team selbst machen
 
@@ -88,6 +88,19 @@ Die Einträge stammen aus den Claude-Code-Sitzungen, aus den Pull Requests auf G
 |---|---|---|---|---|---|---|
 | 01.10., Melvin | LA-12: Vorschau der erkannten Daten | User Story #7 samt Akzeptanzkriterien eingefügt: links das hochgeladene PDF, rechts das JSON zum Bearbeiten | Die KI analysierte die App, erstellte einen Plan und setzte ihn in mehreren Runden um. Links wird die hochgeladene Datei angezeigt (PDF ohne Seitenleiste, Bild als img). Rechts steht ein Formular mit Kunde, Lieferadresse, Lieferdatum und Artikeln. Fehlende oder fehlerhafte Felder sind rot markiert und zusätzlich verständlich aufgelistet (z. B. „Position 2 (Dübel S8): Menge fehlt“). Hinweise der KI erscheinen getrennt davon. Ein zweiter Tab zeigt dieselben Daten als bearbeitbares JSON, synchron mit dem Formular. Ein Job-Ergebnis `{"fehler": ...}` wird neu als Fehler angezeigt. Neue Tests decken das ab. | _vom Team auszufüllen_ | Die erste Version mit einem rohen JSON-Textfeld und technischen Hinweisen wie `positionen[1].menge` wurde nach eigenem Test verworfen. | Nach dem Test im Browser entschieden wir: Formular statt JSON-Textfeld, eigene Fehler und KI-Hinweise getrennt zählen, Hinweisboxen aufklappbar. Die Datei kommt direkt aus dem Browser, darum braucht es keinen neuen Backend-Endpoint. Speichern und Download folgen in eigenen Stories. |
 | 01.10., Melvin | LA-12: Refactoring vor dem PR | Den gesamten Stand prüfen und nach Clean Code aufräumen | Die KI teilte die 370 Zeilen lange Upload-Komponente in kleine Komponenten auf (Dateivorschau, Editor, Formular, JSON-Editor, Hinweisbox, Formularfeld). Die Fachlogik kam in ein eigenes Model `lieferschein.ts`. Der Service liefert neu einen fertigen Lieferschein oder einen `AnalyseFehler`. Die Tests wurden auf die neuen Komponenten verteilt. | _vom Team auszufüllen_ | _vom Team auszufüllen_ | Das Verhalten der Oberfläche blieb bewusst unverändert; geändert wurde nur die Struktur. |
+| 01.10., Andy | CI-Fehler Brakeman beheben (PR #28) | Screenshot des fehlgeschlagenen CI-Schritts „Scan for common Rails security vulnerabilities using static analysis" eingefügt (Meldung „Brakeman 8.0.6 is not the latest version 8.1.0", Exit-Code 5) und um eine Lösung gebeten | Ursache gefunden: `bin/brakeman` startet Brakeman mit `--ensure-latest`, die in `Gemfile.lock` gesperrte Version 8.0.6 war veraltet. Behoben durch Anheben auf 8.1.0. Weil lokal kein Ruby und kein Bundler zur Verfügung standen, wurde die Versionsnummer direkt im Lockfile angepasst und die Auflösung der CI überlassen. | Die Versionsanhebung (Commit `9ea7406`). Danach liefen alle fünf CI-Jobs grün und PR #28 wurde gemergt. | Nichts verworfen. | Die strenge Prüfung mit `--ensure-latest` bleibt bestehen, es wurde nur die Version angehoben. Im selben PR steht Andys Umstellung des Standardmodells der OpenAI-Anbindung auf `gpt-6-luna` mit höherem Token-Limit (32000), Commit `3c7b7c3`, ohne `Co-Authored-By`-Vermerk. |
+
+### 22.10.2026
+
+| Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was haben wir übernommen? | Was haben wir verworfen? | Eigene Entscheidung |
+|---|---|---|---|---|---|---|
+| 22.10., Andy | Persönliche Kurzreflexion im Portfolio (Abschnitt 6) | Die persönliche Selbstreflexion in `portfolio.md` dort eintragen lassen, wo Andy steht | Entwurf einer Tabellenzeile für Andy Hess mit Beitrag (KI-Anbindung, `LieferscheinExtractor`, Review-Kommentare, CI-Fehler), wichtigster Erkenntnis und nächstem Lernschritt, abgeleitet aus dem bisherigen Projektverlauf. Der Assistent wies darauf hin, dass es ein Entwurf ist und Erkenntnis und Lernschritt persönliche Aussagen sind, die Andy selbst prüfen muss. | Der Text wurde unverändert übernommen und von Andy committet (Commit `1d7f7f1`, Branch `feature/portfolio`). | Nichts verworfen. | Andy hat den Entwurf ohne Änderungen als seine Reflexion eingetragen. |
+
+### 29.10.2026
+
+| Sprint/Datum | Wofür wurde KI genutzt? | Prompt oder Kurzbeschreibung | Ergebnis der KI | Was haben wir übernommen? | Was haben wir verworfen? | Eigene Entscheidung |
+|---|---|---|---|---|---|---|
+| 29.10., Andy | KI-Dokumentation ab 01.10. aktualisieren | Auftrag, die KI-Dokumentation ab 01.10.2026 auf den aktuellen Stand zu bringen | Der Assistent wertete Commits, Pull Requests und CI-Ergebnisse ab 01.10. aus. Er ergänzte Andys Einträge zu Brakeman-Fix, Portfolio-Reflexion und zu dieser Aktualisierung, setzte den Stand auf 29.10. und passte die Modell-Angaben in `docs/ki/prompt.md` an das aktuelle Standardmodell an. Für Christians Änderungen vom 22.10. und Melvins offene Felder vom 01.10. trug er nichts ein, weil dort kein KI-Einsatz belegt ist. | _Andy nach Durchsicht ergänzen_ | _Andy nach Durchsicht ergänzen_ | _Andy nach Durchsicht ergänzen_ |
 
 ### Tag 1 und Tag 2
 
