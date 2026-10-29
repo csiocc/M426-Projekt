@@ -2,8 +2,8 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
-import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
+import { AppTheme } from './theme';
 import { DeliveryNoteService, HttpDeliveryNoteService } from './services/delivery-note';
 
 export const appConfig: ApplicationConfig = {
@@ -19,7 +19,7 @@ export const appConfig: ApplicationConfig = {
       license:
         'eyJpZCI6IjUzNWQ0MWU1LWE0MzYtNGIyZC04ODRjLWRlNmEwNDVmODI1NSIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3ODg4NDcwOTAsImV4cCI6MTgyMDM4MzA5MH0.G3Gcacpx1mtRVUHVDUMwYsqFnuMYxc_ArYgQ5CuUHN2OC0QM9-dlupckn7jmDgPCcL91i3Qo9LsRHlNDskfOCg',
       theme: {
-        preset: Aura,
+        preset: AppTheme,
         options: {
           // Dark Mode folgt der OS-Einstellung (prefers-color-scheme). Vorher stand
           // hier '.app-dark' - die Klasse hat aber nie jemand gesetzt, damit war der

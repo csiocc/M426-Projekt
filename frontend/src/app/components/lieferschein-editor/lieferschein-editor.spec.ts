@@ -43,12 +43,42 @@ const feld = (fixture: Fixture, pfad: string) =>
 const jsonFeld = (fixture: Fixture) =>
   wurzel(fixture).querySelector('textarea') as HTMLTextAreaElement;
 
-/** Knopf ueber seine Beschriftung oder sein aria-label. */
+/**
+ * Knopf ueber seine Beschriftung oder sein aria-label. Exakte Treffer gehen vor,
+ * damit "JSON" den Tab findet und nicht "JSON herunterladen".
+ */
 function knopf(fixture: Fixture, beschriftung: string): HTMLButtonElement {
   const knoepfe = Array.from(wurzel(fixture).querySelectorAll('button'));
-  return knoepfe.find(
-    (k) => k.textContent?.includes(beschriftung) || k.getAttribute('aria-label') === beschriftung,
-  )!;
+  const exakt = knoepfe.find(
+    (k) => k.textContent?.trim() === beschriftung || k.getAttribute('aria-label') === beschriftung,
+  );
+  return exakt ?? knoepfe.find((k) => k.textContent?.includes(beschriftung))!;
+}
+
+/** Liest den Inhalt einer Datei, die die Komponente zum Download anbietet. */
+function lesen(blob: Blob): Promise<string> {
+  return new Promise((fertig) => {
+    const leser = new FileReader();
+    leser.onload = () => fertig(leser.result as string);
+    leser.readAsText(blob);
+  });
+}
+
+/** Faengt den Download ab: welche Datei unter welchem Namen gespeichert wuerde. */
+function downloadAbfangen(): { datei: () => Blob; name: () => string } {
+  let datei: Blob | undefined;
+  let name = '';
+  URL.createObjectURL = vi.fn((blob: Blob) => {
+    datei = blob;
+    return 'blob:http://localhost/download';
+  });
+  URL.revokeObjectURL = vi.fn();
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    name = this.download;
+  });
+  return { datei: () => datei!, name: () => name };
 }
 
 async function klicken(fixture: Fixture, element: HTMLElement): Promise<void> {
@@ -223,6 +253,53 @@ describe('LieferscheinEditor', () => {
 
       await klicken(fixture, knopf(fixture, 'Formular'));
       expect(feld(fixture, 'kunde.name')?.value).toBe('Muster AG');
+    });
+  });
+
+  describe('Download', () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it('laedt die Daten als .json-Datei herunter', async () => {
+      const download = downloadAbfangen();
+      const fixture = await zeige(vollstaendig());
+
+      await klicken(fixture, knopf(fixture, 'JSON herunterladen'));
+
+      expect(download.name()).toBe('lieferschein-LS-2026-0042.json');
+      expect(download.datei().type).toBe('application/json');
+      const inhalt = JSON.parse(await lesen(download.datei()));
+      expect(inhalt.lieferschein_nummer).toBe('LS-2026-0042');
+      expect(inhalt.positionen).toHaveLength(2);
+    });
+
+    it('enthaelt die Korrekturen aus Formular und JSON', async () => {
+      const download = downloadAbfangen();
+      const fixture = await zeige(vollstaendig());
+
+      await tippen(fixture, feld(fixture, 'kunde.name')!, 'Korrigiert AG');
+      await klicken(fixture, knopf(fixture, 'JSON'));
+      const daten = JSON.parse(jsonFeld(fixture).value);
+      daten.lieferdatum = '2026-09-11';
+      await tippen(fixture, jsonFeld(fixture), JSON.stringify(daten));
+
+      await klicken(fixture, knopf(fixture, 'JSON herunterladen'));
+
+      const inhalt = JSON.parse(await lesen(download.datei()));
+      expect(inhalt.kunde.name).toBe('Korrigiert AG');
+      expect(inhalt.lieferdatum).toBe('2026-09-11');
+    });
+
+    it('sperrt den Download, solange das JSON ungueltig ist', async () => {
+      downloadAbfangen();
+      const fixture = await zeige(vollstaendig());
+      await klicken(fixture, knopf(fixture, 'JSON'));
+
+      await tippen(fixture, jsonFeld(fixture), '{ "kunde": ');
+      expect(knopf(fixture, 'JSON herunterladen').disabled).toBe(true);
+
+      // Zurueck im Formular gilt wieder der letzte gueltige Stand.
+      await klicken(fixture, knopf(fixture, 'Formular'));
+      expect(knopf(fixture, 'JSON herunterladen').disabled).toBe(false);
     });
   });
 

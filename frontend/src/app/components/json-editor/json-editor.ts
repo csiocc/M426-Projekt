@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, linkedSignal, model } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  linkedSignal,
+  model,
+  output,
+} from '@angular/core';
 import { TextareaModule } from 'primeng/textarea';
 import { JsonValue } from '../../models/delivery-note';
 import { Lieferschein, normalisiere } from '../../models/lieferschein';
@@ -29,6 +36,8 @@ function parseFehler(text: string): string | null {
 })
 export class JsonEditor {
   readonly daten = model.required<Lieferschein>();
+  /** Meldet nach jeder Eingabe, ob der Text gueltiges JSON ist. */
+  readonly gueltig = output<boolean>();
 
   /** Der zuletzt von hier aus geschriebene Stand - siehe `text`. */
   private selbstGeschrieben: Lieferschein | null = null;
@@ -53,8 +62,10 @@ export class JsonEditor {
       const neu = normalisiere(JSON.parse(text) as JsonValue);
       this.selbstGeschrieben = neu;
       this.daten.set(neu);
+      this.gueltig.emit(true);
     } catch {
       // Ungueltiges JSON: `fehler` zeigt die Meldung, `daten` bleibt unveraendert.
+      this.gueltig.emit(false);
     }
   }
 }

@@ -245,3 +245,31 @@ export function gruppiereHinweise(hinweise: Hinweis[]): HinweisGruppe[] {
     hinweise: hinweise.filter((hinweis) => hinweis.bereich === bereich),
   })).filter((gruppe) => gruppe.hinweise.length > 0);
 }
+
+// ---------------------------------------------------------------------------
+// Export: Lieferschein als JSON-Datei
+// ---------------------------------------------------------------------------
+
+/** Alles ausser Buchstaben, Ziffern, Punkt, Binde- und Unterstrich wird zu "-". */
+function alsDateinamenTeil(text: string): string {
+  return text
+    .trim()
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Dateiname fuer den Download, z.B. "lieferschein-LS-2026-0042.json".
+ * Ohne Lieferschein-Nummer dient das Lieferdatum zur Unterscheidung.
+ */
+export function exportDateiname(daten: Lieferschein): string {
+  const kennung = [daten.lieferschein_nummer, daten.lieferdatum]
+    .map((teil) => alsDateinamenTeil(teil ?? ''))
+    .find((teil) => teil !== '');
+  return kennung ? `lieferschein-${kennung}.json` : 'lieferschein.json';
+}
+
+/** Der Inhalt der Download-Datei: genau der aktuelle Stand, lesbar eingerueckt. */
+export function exportJson(daten: Lieferschein): string {
+  return `${JSON.stringify(daten, null, 2)}\n`;
+}

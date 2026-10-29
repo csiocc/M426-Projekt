@@ -1,7 +1,7 @@
-<label class="flex flex-col gap-1">
-  <span class="text-xs font-medium text-surface-600 dark:text-surface-300">{{ label() }}</span>
+<label class="flex flex-col gap-1.5">
+  <span class="text-xs font-medium text-label-2">{{ label() }}</span>
   <ng-content />
   @if (fehler(); as text) {
-    <small class="text-xs text-red-600 dark:text-red-400">{{ text }}</small>
+    <small class="text-xs text-danger">{{ text }}</small>
   }
 </label>

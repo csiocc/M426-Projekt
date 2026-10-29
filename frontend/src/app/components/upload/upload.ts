@@ -12,12 +12,12 @@ import { Subscription } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { FileUpload, FileUploadHandlerEvent, FileUploadModule } from 'primeng/fileupload';
-import { MessageModule } from 'primeng/message';
 import { AnalyseFehler, DeliveryNoteService } from '../../services/delivery-note';
 import { ACCEPTED_TYPES, MAX_FILE_SIZE_BYTES, formatBytes } from '../../models/delivery-note';
 import { Lieferschein } from '../../models/lieferschein';
 import { DateiVorschau } from '../datei-vorschau/datei-vorschau';
 import { LieferscheinEditor } from '../lieferschein-editor/lieferschein-editor';
+import { StatusMeldung } from '../status-meldung/status-meldung';
 
 /** 'laedt' = Datei geht zum Server, 'analysiert' = Server hat sie, KI rechnet noch. */
 type Status = 'bereit' | 'laedt' | 'analysiert' | 'fertig' | 'fehler';
@@ -51,7 +51,7 @@ function alsFehleranzeige(fehler: Error): Fehleranzeige {
  * Originaldatei, rechts die erkannten Daten zum Pruefen und Korrigieren.
  */
 @Component({
-  imports: [ButtonModule, DateiVorschau, FileUploadModule, LieferscheinEditor, MessageModule],
+  imports: [ButtonModule, DateiVorschau, FileUploadModule, LieferscheinEditor, StatusMeldung],
   selector: 'app-upload',
   styleUrl: './upload.css',
   templateUrl: './upload.html',
