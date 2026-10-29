@@ -83,16 +83,31 @@
   </p-fileupload>
 
   @switch (status()) {
+    <!-- role="status": Screenreader lesen den Wechsel der Phase vor. -->
     @case ('laedt') {
-      <p-message severity="info" styleClass="mt-8 w-full"
-        >Lieferschein wird hochgeladen …</p-message
-      >
+      <p-message severity="info" styleClass="mt-8 w-full">
+        <div class="flex items-center gap-3" role="status">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <div>
+            <p class="font-semibold">Lieferschein wird hochgeladen …</p>
+            <p class="text-sm opacity-80">Schritt 1 von 2</p>
+          </div>
+        </div>
+      </p-message>
     }
     @case ('analysiert') {
       <p-message severity="info" styleClass="mt-8 w-full">
-        <span
-          ><strong>{{ datei()?.name }}</strong> wird analysiert …</span
-        >
+        <div class="flex items-center gap-3" role="status">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <div class="min-w-0">
+            <p class="font-semibold">
+              <span class="break-words">{{ datei()?.name }}</span> wird analysiert …
+            </p>
+            <p class="text-sm opacity-80">
+              Schritt 2 von 2 – die KI liest die Daten aus, das kann einen Moment dauern.
+            </p>
+          </div>
+        </div>
       </p-message>
     }
     @case ('fehler') {
@@ -103,6 +118,7 @@
           <div class="min-w-0" role="alert">
             <p class="font-semibold">{{ f.titel }}</p>
             <p class="mt-1 text-sm break-words opacity-80">{{ f.detail }}</p>
+            <p class="mt-2 text-sm">Entferne die Datei und versuche es erneut.</p>
           </div>
         </p-message>
       }
@@ -110,6 +126,18 @@
     @case ('fertig') {
       @if (datei(); as d) {
         @if (ergebnis(); as e) {
+          <p-message severity="success" styleClass="mt-8 w-full">
+            <div class="flex min-w-0 items-center gap-3" role="status">
+              <i class="pi pi-check-circle" aria-hidden="true"></i>
+              <div class="min-w-0">
+                <p class="font-semibold">Analyse abgeschlossen</p>
+                <p class="text-sm break-words opacity-80">
+                  {{ d.name }} wurde erfolgreich ausgelesen. Prüfe die erkannten Daten vor dem
+                  Export.
+                </p>
+              </div>
+            </div>
+          </p-message>
           <!-- Links das Original, rechts die erkannten Daten zum Korrigieren.
                Auf schmalen Bildschirmen untereinander. -->
           <section class="mt-8 grid gap-6 lg:grid-cols-2">
